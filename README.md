@@ -33,7 +33,8 @@ cortex/
 │   ├── datastore         # MySQL MCP queries + export patterns
 │   ├── pipelines         # End-to-end data conversion flows
 │   └── bootstrap         # Setup, install, and troubleshooting guide
-├── bin/                  # Utility scripts (3 files)
+├── bin/                  # Utility scripts (4 files)
+│   ├── startup.py        # Session bootstrap — structured steps for Claude
 │   ├── healthcheck.py    # Verify all 29 dependencies
 │   ├── evolve.py         # Self-improvement analysis
 │   └── stash.py          # Capture reusable scripts to cookbook/
@@ -47,6 +48,21 @@ cortex/
 | `docs/` | `{domain-noun}.md` | `knowledge-base`, `datastore`, `mailbox` |
 | `bin/` | `{action-noun}.py` | `healthcheck`, `evolve`, `stash` |
 | `cookbook/` | `{descriptive-name}.py` | `csv-to-styled-excel`, `pdf-invoice-parser` |
+
+## Auto-Trigger Mechanism
+
+Cortex uses a **three-layer** approach to guarantee it loads on every conversation:
+
+1. **CLAUDE.md instruction** — `~/.claude/CLAUDE.md` tells Claude to invoke `/cortex` BEFORE responding to any first message
+2. **Skill description** — leads with `ALWAYS LOAD THIS SKILL ON EVERY CONVERSATION WITHOUT EXCEPTION` plus `priority: critical`
+3. **Skill-level hooks** (in SKILL.md frontmatter) — `UserPromptSubmit` reminder, `PreCompact` flush warning, `Stop` cleanup
+
+### Lifecycle
+
+- **Session start** — CLAUDE.md + skill description trigger cortex; `startup.py` prints structured bootstrap steps
+- **During work** — adaptive heartbeat crons sync KB in background
+- **Pre-compact** — hook reminds Claude to flush all pending KB entries, Board snapshot, WorkLog
+- **Session end** — hook cleans up temp marker files; cortex tears down crons
 
 ## Quick Start
 

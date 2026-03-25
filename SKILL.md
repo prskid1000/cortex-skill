@@ -1,16 +1,34 @@
 ---
 name: cortex
 description: >
-  Autonomous brain, project tracker, and productivity OS. Always active on EVERY conversation.
+  ALWAYS LOAD THIS SKILL ON EVERY CONVERSATION WITHOUT EXCEPTION — this is the OS layer.
+  Autonomous brain, project tracker, and productivity OS.
   Manages: Obsidian knowledge base (KB mesh), Jira-like issue tracking (epics/stories/tasks/bugs/sprints/kanban),
   adaptive cron heartbeats, Google Workspace (Drive/Sheets/Docs/Slides/Gmail/Calendar/Tasks),
   document creation (Excel/Word/PowerPoint/PDF), screenshots, email workflows, git operations,
   image/video/audio processing, MySQL database queries, data conversion pipelines, auto-testing,
-  auto-improvement, and script capture. Trigger on EVERY conversation — this is the OS layer.
+  auto-improvement, and script capture.
   Also trigger when user mentions: obsidian, KB, knowledge, worklog, board, epic, story, sprint,
   ticket, issue, google workspace, gws, drive, sheets, docs, slides, gmail, calendar, email,
   pdf, excel, word, powerpoint, screenshot, ffmpeg, pandoc, imagemagick, document, report, invoice,
   presentation, spreadsheet, chart, image, video, audio, convert, export, database, mysql, query, sql.
+priority: critical
+hooks:
+  UserPromptSubmit:
+    - hooks:
+        - type: command
+          command: "bash -c 'MARKER=/tmp/cortex_reminded_$$PPID; if [ ! -f \"$MARKER\" ]; then touch \"$MARKER\" && echo \"CORTEX BOOTSTRAP REQUIRED: Invoke /cortex skill NOW before responding.\"; fi'"
+          timeout: 5
+  PreCompact:
+    - hooks:
+        - type: command
+          command: "echo 'PRE-COMPACT: Flush ALL pending KB entries, Board snapshot, and WorkLog before compaction. CronDelete all cortex crons.'"
+          timeout: 3
+  Stop:
+    - hooks:
+        - type: command
+          command: "bash -c 'rm -f /tmp/cortex_reminded_$$PPID 2>/dev/null; true'"
+          timeout: 3
 ---
 
 # Cortex — Autonomous Brain, Tracker & Productivity OS
@@ -39,6 +57,7 @@ description: >
 
 | Script | Purpose | Usage |
 |--------|---------|-------|
+| [startup.py](bin/startup.py) | Session bootstrap: print structured steps for Claude to execute | `python ~/.claude/skills/cortex/bin/startup.py [--mode coding\|research\|review\|quick]` |
 | [healthcheck.py](bin/healthcheck.py) | Verify environment: packages, CLIs, MCPs, structure | `python ~/.claude/skills/cortex/bin/healthcheck.py` |
 | [evolve.py](bin/evolve.py) | Self-improvement: detect gaps, stale content, suggest/apply fixes | `python ~/.claude/skills/cortex/bin/evolve.py [--apply]` |
 | [stash.py](bin/stash.py) | Capture reusable scripts to cookbook/ with auto-genericizing | `python ~/.claude/skills/cortex/bin/stash.py --name X --source Y` |
