@@ -129,14 +129,15 @@ desc_match = re.search(r'description:\s*>\s*\n(.*?)---', skill_md, re.DOTALL)
 if desc_match:
     description = desc_match.group(1).lower()
     topic_keywords = {
-        "obsidian-kb": ["obsidian", "knowledge", "kb"],
-        "board-tracking": ["board", "ticket", "sprint", "epic", "jira"],
-        "google-workspace": ["gws", "google", "drive", "sheets"],
-        "document-creation": ["document", "excel", "word", "pdf", "powerpoint"],
-        "email-workflows": ["email", "gmail"],
-        "media-processing": ["ffmpeg", "image", "video", "audio"],
-        "database-mysql": ["database", "mysql", "sql", "query"],
-        "data-pipelines": ["pipeline", "convert", "export"],
+        "knowledge-base": ["obsidian", "knowledge", "kb"],
+        "issue-tracker": ["board", "ticket", "sprint", "epic", "jira"],
+        "workspace": ["gws", "google", "drive", "sheets"],
+        "doc-forge": ["document", "excel", "word", "pdf", "powerpoint"],
+        "mailbox": ["email", "gmail"],
+        "media-kit": ["ffmpeg", "image", "video", "audio"],
+        "datastore": ["database", "mysql", "sql", "query"],
+        "pipelines": ["pipeline", "convert", "export"],
+        "bootstrap": ["install", "setup", "mcp"],
     }
     for ref_name, keywords in topic_keywords.items():
         if not any(kw in description for kw in keywords):

@@ -3,16 +3,16 @@
 Cortex Script Capture: Save interesting scripts to cookbook/ for reuse.
 
 Usage:
-  python capture_script.py --name "csv_to_excel" --source /tmp/my_script.py
-  python capture_script.py --name "pdf_merger" --source /tmp/merge.py --tags "pdf,merge"
-  python capture_script.py --list
-  python capture_script.py --search "excel"
+  python ~/.claude/skills/cortex/bin/stash.py --name "csv_to_excel" --source /tmp/my_script.py
+  python ~/.claude/skills/cortex/bin/stash.py --name "pdf_merger" --source /tmp/merge.py --tags "pdf,merge"
+  python ~/.claude/skills/cortex/bin/stash.py --list
+  python ~/.claude/skills/cortex/bin/stash.py --search "excel"
 
 The script will:
 1. Copy the source file to cookbook/
 2. Add a header comment with metadata
 3. Genericize project-specific values (paths, IDs, etc.)
-4. Update the examples index
+4. Update the cookbook index
 """
 
 import sys
