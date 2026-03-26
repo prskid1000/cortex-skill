@@ -110,19 +110,54 @@ else:
 print("\n=== SKILL STRUCTURE ===")
 # ============================================================
 
-skill_dir = Path.home() / ".claude" / "skills" / "cortex"
-check("Skill: SKILL.md exists", (skill_dir / "SKILL.md").exists())
-check("Skill: docs/ exists", (skill_dir / "docs").is_dir())
-check("Skill: bin/ exists", (skill_dir / "bin").is_dir())
-check("Skill: cookbook/ exists", (skill_dir / "cookbook").is_dir())
+root = Path.home() / ".claude" / "skills"
+cortex_dir = root / "cortex"
 
-ref_files = [
+check("Skill: cortex/SKILL.md exists", (cortex_dir / "SKILL.md").exists())
+check("Skill: cortex/bin/ exists", (cortex_dir / "bin").is_dir())
+
+if (cortex_dir / "docs").is_dir():
+    check("Skill: cortex/docs/ exists", True)
+else:
+    warn("Skill", "cortex/docs/ missing (ok if fully split into sub-skills)")
+
+# Legacy monolith docs (may be removed once fully split into sub-skills)
+legacy_docs = [
     "workspace.md",
     "doc-forge.md", "mailbox.md", "media-kit.md",
-    "datastore.md", "pipelines.md", "bootstrap.md"
+    "datastore.md", "pipelines.md", "bootstrap.md",
 ]
-for f in ref_files:
-    check(f"Doc: {f}", (skill_dir / "docs" / f).exists())
+for f in legacy_docs:
+    p = cortex_dir / "docs" / f
+    if p.exists():
+        check(f"Doc: cortex/docs/{f}", True)
+    else:
+        warn("Docs", f"Missing cortex/docs/{f} (ok if migrated to sub-skills)")
+
+# Sub-skills (optional but recommended)
+subskills = [
+    "cortex-workspace",
+    "cortex-doc-forge",
+    "cortex-mailbox",
+    "cortex-media-kit",
+    "cortex-datastore",
+    "cortex-pipelines",
+    "cortex-bootstrap",
+]
+for s in subskills:
+    d = root / s
+    if not d.exists():
+        warn("Sub-skill", f"{s} not found (ok if not installed yet)")
+        continue
+    check(f"Sub-skill: {s}/SKILL.md exists", (d / "SKILL.md").exists())
+    if (d / "docs").is_dir():
+        idx = d / "docs" / "index.md"
+        if idx.exists():
+            check(f"Sub-skill doc: {s}/docs/index.md", True)
+        else:
+            warn("Sub-skill docs", f"Missing {s}/docs/index.md")
+    else:
+        warn("Sub-skill docs", f"Missing {s}/docs/ directory")
 
 # ============================================================
 print("\n=== SUMMARY ===")

@@ -6,7 +6,7 @@ description: >
   Manages: Google Workspace (Drive/Sheets/Docs/Slides/Gmail/Calendar/Tasks),
   document creation (Excel/Word/PowerPoint/PDF), screenshots, email workflows, git operations,
   image/video/audio processing, MySQL database queries, data conversion pipelines, auto-testing,
-  auto-improvement, and script capture.
+  and automation workflows.
   Also trigger when user mentions: google workspace, gws, drive, sheets, docs, slides, gmail, calendar, email,
   pdf, excel, word, powerpoint, screenshot, ffmpeg, pandoc, imagemagick, document, report, invoice,
   presentation, spreadsheet, chart, image, video, audio, convert, export, database, mysql, query, sql.
@@ -54,15 +54,6 @@ hooks:
 | Script | Purpose | Usage |
 |--------|---------|-------|
 | [healthcheck.py](bin/healthcheck.py) | Verify environment: packages, CLIs, MCPs, structure | `python ~/.claude/skills/cortex/bin/healthcheck.py` |
-| [evolve.py](bin/evolve.py) | Self-improvement: detect gaps, stale content, suggest/apply fixes | `python ~/.claude/skills/cortex/bin/evolve.py [--apply]` |
-| [stash.py](bin/stash.py) | Capture reusable scripts to cookbook/ with auto-genericizing | `python ~/.claude/skills/cortex/bin/stash.py --name X --source Y` |
-
-### `cookbook/` — Reusable Script Templates
-
-Auto-populated during work sessions. When you create a useful, reusable script:
-1. Save genericized version: `python ~/.claude/skills/cortex/bin/stash.py --name "descriptive-name" --source /tmp/script.py --tags "tag1,tag2"`
-2. Browse existing: `python ~/.claude/skills/cortex/bin/stash.py --list`
-3. Search: `python ~/.claude/skills/cortex/bin/stash.py --search "keyword"`
 
 ---
 
@@ -86,15 +77,6 @@ Auto-populated during work sessions. When you create a useful, reusable script:
 | Process image/video/audio | [docs/media-kit.md](docs/media-kit.md) |
 | Convert data formats | [docs/pipelines.md](docs/pipelines.md) |
 | Install missing tools | [docs/bootstrap.md](docs/bootstrap.md) |
-
----
-
-## Auto-Evolve
-
-After every 5th subtask or on request ("improve cortex" / "update skill"):
-1. Run `evolve.py` — detect gaps, stale docs, missing coverage
-2. Patch reference docs with new patterns/recipes discovered during work
-3. Capture interesting scripts to `cookbook/`
 
 ---
 
@@ -126,39 +108,32 @@ When cortex encounters a new domain or capability during work:
    - Must include: docstring, `--help` via argparse, clean output
    - Update the Scripts table in SKILL.md
 
-3. **New cookbook entry?** Use `bin/stash.py` — it handles naming, headers, and indexing automatically.
-
 ### File Naming Convention
 
 ```
-docs/                          bin/                       cookbook/
-├── {domain-noun}.md           ├── {action-noun}.py       ├── {descriptive-name}.py
-│   workspace.md               │   healthcheck.py          │   csv-to-styled-excel.py
-│   doc-forge.md               │   evolve.py               │   pdf-invoice-parser.py
-│   mailbox.md                 │   stash.py                │   bulk-image-resize.py
-│   doc-forge.md               │                           │   db-export-to-sheets.py
-│   mailbox.md                 │                           │
-│   media-kit.md               │                           │
-│   datastore.md               │                           │
-│   pipelines.md               │                           │
-│   bootstrap.md               │                           │
+docs/                          bin/
+├── {domain-noun}.md           ├── {action-noun}.py
+│   workspace.md               │   healthcheck.py
+│   doc-forge.md               │
+│   mailbox.md                 │
+│   media-kit.md               │
+│   datastore.md               │
+│   pipelines.md               │
+│   bootstrap.md               │
 ```
 
 **Rules:**
 - kebab-case, no underscores
 - Docs: noun-based (what it covers), 1-2 words
 - Bin: action/tool-based (what it does), 1 word preferred
-- Cookbook: descriptive (what the script does), 2-4 words
 
 ---
 
 ## Autonomous Behaviors
 
 1. **File ops** — download → edit locally → upload (automate everything)
-2. **Auto-evolve** — run `evolve.py` after every subtask
-3. **Auto-install** — fix missing dependencies on detection
-4. **Script capture** — save reusable scripts to cookbook/ via `stash.py`
-5. **Auto-add files** — create new docs/scripts when new domains emerge
+2. **Auto-install** — fix missing dependencies on detection
+3. **Auto-add files** — create new docs/scripts when new domains emerge
 
 ## Browser
 

@@ -197,6 +197,127 @@ s.notes_slide.notes_text_frame.text = "Notes here"
 prs.save('/tmp/presentation.pptx')
 ```
 
+### PowerPoint — status deck from JSON (simplified)
+
+**Input JSON**
+
+```json
+{
+  "title": "Weekly Status Report",
+  "subtitle": "Week 13 — March 2026",
+  "author": "Team Name",
+  "kpis": [
+    {"name": "Revenue", "value": "$150K", "change": "+12%", "status": "green"},
+    {"name": "Open Bugs", "value": "23", "change": "+5", "status": "red"}
+  ],
+  "tasks": {
+    "done": ["Implemented auth flow"],
+    "in_progress": ["API v2 migration"],
+    "blocked": ["Cloud migration — waiting on vendor"]
+  },
+  "next_steps": ["Complete API v2", "Start load testing"]
+}
+```
+
+**Generate deck**
+
+```python
+import json
+from pathlib import Path
+from pptx import Presentation
+from pptx.util import Inches, Pt
+from pptx.dml.color import RGBColor
+from pptx.enum.text import PP_ALIGN
+
+STATUS = {
+    "green": RGBColor(0x28, 0xA7, 0x45),
+    "amber": RGBColor(0xFF, 0xA5, 0x00),
+    "red": RGBColor(0xDC, 0x35, 0x45),
+}
+
+def _bullets(tf, items):
+    tf.clear()
+    tf.text = items[0] if items else ""
+    for it in (items or [])[1:]:
+        p = tf.add_paragraph()
+        p.text = it
+
+def status_deck(data: dict, out_pptx: str):
+    prs = Presentation()
+    prs.slide_width, prs.slide_height = Inches(10), Inches(5.625)  # 16:9-ish
+
+    # Title
+    s = prs.slides.add_slide(prs.slide_layouts[0])
+    s.shapes.title.text = data["title"]
+    if len(s.placeholders) > 1:
+        s.placeholders[1].text = f"{data.get('subtitle','')}\n{data.get('author','')}".strip()
+
+    # KPIs
+    kpis = data.get("kpis") or []
+    if kpis:
+        s = prs.slides.add_slide(prs.slide_layouts[5])  # blank
+        s.shapes.title.text = "Key Metrics"
+        cols = max(1, len(kpis))
+        col_w = Inches(9) / cols
+        left0 = Inches(0.5)
+        for i, k in enumerate(kpis):
+            left = left0 + col_w * i
+            tb = s.shapes.add_textbox(left, Inches(2.0), col_w, Inches(0.8))
+            p = tb.text_frame.paragraphs[0]
+            p.text = str(k.get("value", ""))
+            p.font.size = Pt(32)
+            p.font.bold = True
+            p.font.color.rgb = STATUS.get(k.get("status", "green"), RGBColor(0, 0, 0))
+            p.alignment = PP_ALIGN.CENTER
+
+            tb2 = s.shapes.add_textbox(left, Inches(2.85), col_w, Inches(0.4))
+            p2 = tb2.text_frame.paragraphs[0]
+            p2.text = str(k.get("change", ""))
+            p2.font.size = Pt(14)
+            p2.alignment = PP_ALIGN.CENTER
+
+            tb3 = s.shapes.add_textbox(left, Inches(3.25), col_w, Inches(0.4))
+            p3 = tb3.text_frame.paragraphs[0]
+            p3.text = str(k.get("name", ""))
+            p3.font.size = Pt(12)
+            p3.font.color.rgb = RGBColor(0x70, 0x70, 0x70)
+            p3.alignment = PP_ALIGN.CENTER
+
+    # Tasks
+    tasks = data.get("tasks") or {}
+    if tasks:
+        s = prs.slides.add_slide(prs.slide_layouts[5])
+        s.shapes.title.text = "Task Progress"
+        sections = [("Done", "done"), ("In Progress", "in_progress"), ("Blocked", "blocked")]
+        for idx, (label, key) in enumerate(sections):
+            left = Inches(0.7 + idx * 3.1)
+            hdr = s.shapes.add_textbox(left, Inches(1.8), Inches(2.8), Inches(0.4))
+            hp = hdr.text_frame.paragraphs[0]
+            items = tasks.get(key) or []
+            hp.text = f"{label} ({len(items)})"
+            hp.font.bold = True
+            box = s.shapes.add_textbox(left, Inches(2.3), Inches(2.8), Inches(3.0))
+            _bullets(box.text_frame, items[:7])
+
+    # Next steps
+    steps = data.get("next_steps") or []
+    if steps:
+        s = prs.slides.add_slide(prs.slide_layouts[5])
+        s.shapes.title.text = "Next Steps"
+        box = s.shapes.add_textbox(Inches(1.0), Inches(1.8), Inches(8.8), Inches(3.6))
+        tf = box.text_frame
+        tf.clear()
+        for i, step in enumerate(steps, 1):
+            p = tf.paragraphs[0] if i == 1 else tf.add_paragraph()
+            p.text = f"{i}. {step}"
+            p.font.size = Pt(20)
+
+    prs.save(out_pptx)
+
+data = json.loads(Path("report_data.json").read_text(encoding="utf-8"))
+status_deck(data, "/tmp/status-deck.pptx")
+```
+
 ## PDF — reportlab (generate from scratch)
 
 ```python
@@ -262,6 +383,50 @@ pix.save("screenshot.png")
 for page in doc:
     for img in page.get_images():
         fitz.Pixmap(doc, img[0]).save(f"img_{img[0]}.png")
+```
+
+### PDF — merge / split with PyPDF2 (simplified)
+
+```python
+from pathlib import Path
+from PyPDF2 import PdfReader, PdfWriter, PdfMerger
+
+def merge_pdfs(inputs: list[str], out_pdf: str):
+    merger = PdfMerger()
+    for p in inputs:
+        p = str(p)
+        merger.append(p, outline_item=Path(p).stem)
+    merger.write(out_pdf)
+    merger.close()
+
+def split_pdf(input_pdf: str, pages: str, out_dir: str):
+    """
+    pages examples:
+      "1-5,10-15" (1-indexed, inclusive)
+      "3" (single page)
+    """
+    out = Path(out_dir)
+    out.mkdir(parents=True, exist_ok=True)
+    reader = PdfReader(input_pdf)
+    total = len(reader.pages)
+    for part in pages.split(","):
+        part = part.strip()
+        if "-" in part:
+            a, b = part.split("-", 1)
+            start, end = int(a) - 1, int(b)          # end is inclusive in input
+        else:
+            start, end = int(part) - 1, int(part)
+        start = max(0, start)
+        end = min(total, end)
+        w = PdfWriter()
+        for i in range(start, end):
+            w.add_page(reader.pages[i])
+        out_path = out / f"pages_{start+1}-{end}.pdf"
+        with out_path.open("wb") as f:
+            w.write(f)
+
+# merge_pdfs(["a.pdf", "b.pdf"], "/tmp/merged.pdf")
+# split_pdf("input.pdf", "1-5,10-15", "/tmp/split_output")
 ```
 
 ## PDF — pdfplumber (extract tables/text)

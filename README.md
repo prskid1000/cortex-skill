@@ -13,7 +13,7 @@ Cortex is an always-on skill that gives Claude Code deep tool orchestration — 
 | **Database Queries** | MySQL MCP for schema exploration, analytics, data export |
 | **Media Processing** | FFmpeg (audio/video), Pillow (images), ImageMagick, Pandoc |
 | **Data Pipelines** | CSV→Excel→Sheets, DB→Report→Email, PDF extraction, format conversion |
-| **Self-Healing** | Auto-test environment, auto-install missing packages, auto-improve docs |
+| **Self-Healing** | Auto-test environment, auto-install missing packages |
 
 ## Structure
 
@@ -29,11 +29,8 @@ cortex/
 │   ├── datastore         # MySQL MCP queries + export patterns
 │   ├── pipelines         # End-to-end data conversion flows
 │   └── bootstrap         # Setup, install, and troubleshooting guide
-├── bin/                  # Utility scripts (3 files)
+├── bin/                  # Utility scripts
 │   ├── healthcheck.py    # Verify environment: packages, CLIs, MCPs, structure
-│   ├── evolve.py         # Self-improvement: detect gaps, stale content, suggest/apply fixes
-│   └── stash.py          # Capture reusable scripts to cookbook/
-└── cookbook/              # Auto-populated reusable script templates
 ```
 
 ## Auto-Trigger Mechanism
@@ -88,17 +85,6 @@ These scripts live in `~/.claude/skills/cortex/bin/`. Run them at the specified 
 - If any check fails, attempt auto-fix or warn the user
 - Do NOT skip this — environment drift causes silent failures
 
-### `evolve.py` — Every completed subtask
-- After completing every subtask, run:
-  `python ~/.claude/skills/cortex/bin/evolve.py`
-- If `--apply` would fix issues, ask the user before applying
-
-### `stash.py` — After creating any reusable script
-- When you write a Python script during a session that could be reused (data pipeline, report generator, converter, etc.), capture it:
-  `python ~/.claude/skills/cortex/bin/stash.py --name "descriptive-name" --source /path/to/script.py --tags "tag1,tag2"`
-- Signs of a reusable script: generic logic, no hardcoded project values, solves a common task
-- Do NOT stash one-off debugging scripts or project-specific glue code
-
 ---
 
 ## Re-invoke Cortex
@@ -115,20 +101,13 @@ Agent-type hooks in settings.json spawn subagents that have NO access to skills.
 | Folder | Pattern | Examples |
 |--------|---------|---------|
 | `docs/` | `{domain-noun}.md` | `datastore`, `mailbox` |
-| `bin/` | `{action-noun}.py` | `healthcheck`, `evolve`, `stash` |
-| `cookbook/` | `{descriptive-name}.py` | `csv-to-styled-excel`, `pdf-invoice-parser` |
+| `bin/` | `{action-noun}.py` | `healthcheck` |
 
 ## Quick Start
 
 ```bash
 # Verify environment
 python ~/.claude/skills/cortex/bin/healthcheck.py
-
-# Check skill quality
-python ~/.claude/skills/cortex/bin/evolve.py
-
-# Capture a useful script
-python ~/.claude/skills/cortex/bin/stash.py --name "my-script" --source /tmp/script.py --tags "excel,report"
 ```
 
 ## Requirements
