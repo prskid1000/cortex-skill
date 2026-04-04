@@ -5,7 +5,7 @@ Autonomous brain and productivity OS for Claude Code.
 ## Quick Start
 
 ```bash
-python ~/.claude/skills/cortex/bin/healthcheck.py
+python ~/.claude/skills/cortex/scripts/healthcheck.py
 ```
 
 ## Auto-Trigger Mechanism
@@ -23,26 +23,44 @@ Add this minimal block to `~/.claude/CLAUDE.md`:
 Skill(skill="cortex")
 
 # First session each day
-python ~/.claude/skills/cortex/bin/healthcheck.py
+python ~/.claude/skills/cortex/scripts/healthcheck.py
 
 # Trigger `/cortex` from main conversation (not subagents)
 ````
 
+## Structure
+
+```
+cortex/
+├── SKILL.md              # Skill entry point (lean, always loaded)
+├── README.md             # This file
+├── scripts/              # Executable Python scripts
+│   └── healthcheck.py    # System verification
+├── references/           # Tool capabilities, commands, API surfaces
+│   ├── gws-cli.md        # Google Workspace CLI reference
+│   ├── document-creation.md  # openpyxl, python-docx, python-pptx
+│   ├── pdf-tools.md      # PyMuPDF, PyPDF2, pdfplumber, reportlab
+│   ├── media-tools.md    # Pillow, ImageMagick, FFmpeg
+│   ├── conversion-tools.md   # Pandoc
+│   ├── web-parsing.md    # lxml, BeautifulSoup4
+│   ├── email-reference.md    # Python MIME + Gmail CLI
+│   ├── database-reference.md # MySQL MCP
+│   └── setup.md          # Installation & troubleshooting
+└── examples/             # Working code blocks
+    ├── office-documents.md   # Excel, Word, PowerPoint
+    ├── pdf-workflows.md      # PDF generation & extraction
+    ├── image-processing.md   # Pillow + ImageMagick
+    ├── video-audio.md        # FFmpeg
+    ├── email-workflows.md    # Email composition & Gmail
+    ├── database-export.md    # Database query & export
+    ├── data-pipelines.md     # End-to-end workflows
+    └── document-conversion.md # Pandoc conversions
+```
+
 ## Naming Convention
 
 | Folder | Pattern | Examples |
-|--------|---------|---------|
-| `docs/` | `{task-focused}.md` | `database-workflows`, `email-workflows` |
-| `bin/` | `{action-noun}.py` | `healthcheck` |
-
-## Docs
-
-| Need | Go To |
-|------|-------|
-| Google Workspace commands | [docs/gws-quickref.md](docs/gws-quickref.md) |
-| Create documents | [docs/create-documents.md](docs/create-documents.md) |
-| Email workflows | [docs/email-workflows.md](docs/email-workflows.md) |
-| Media processing | [docs/media-processing.md](docs/media-processing.md) |
-| Database workflows | [docs/database-workflows.md](docs/database-workflows.md) |
-| Data pipelines | [docs/data-pipelines.md](docs/data-pipelines.md) |
-| Setup/troubleshooting | [docs/setup.md](docs/setup.md) |
+|--------|---------|----------|
+| `scripts/` | `{action-noun}.py` | `healthcheck` |
+| `references/` | `{tool-or-domain}.md` | `gws-cli`, `pdf-tools`, `media-tools` |
+| `examples/` | `{task-focused}.md` | `office-documents`, `video-audio` |

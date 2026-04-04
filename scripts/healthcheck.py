@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Cortex Self-Test: Verify all tools, packages, MCPs, and services are available.
-Run: python ~/.claude/skills/cortex/bin/healthcheck.py
+Run: python ~/.claude/skills/cortex/scripts/healthcheck.py
 
 Exit codes: 0 = all pass, 1 = some failures (auto-fix attempted), 2 = critical failures
 """
@@ -110,33 +110,49 @@ else:
 print("\n=== SKILL STRUCTURE ===")
 # ============================================================
 
-root = Path.home() / ".claude" / "skills"
-cortex_dir = root / "cortex"
+cortex_dir = Path.home() / ".claude" / "skills" / "cortex"
 
 check("Skill: cortex/SKILL.md exists", (cortex_dir / "SKILL.md").exists())
-check("Skill: cortex/bin/ exists", (cortex_dir / "bin").is_dir())
+check("Skill: cortex/scripts/ exists", (cortex_dir / "scripts").is_dir())
+check("Skill: cortex/references/ exists", (cortex_dir / "references").is_dir())
+check("Skill: cortex/examples/ exists", (cortex_dir / "examples").is_dir())
 
-if (cortex_dir / "docs").is_dir():
-    check("Skill: cortex/docs/ exists", True)
-else:
-    warn("Skill", "cortex/docs/ missing (ok if fully split into sub-skills)")
-
-# Legacy monolith docs (may be removed once fully split into sub-skills)
-legacy_docs = [
-    "gws-quickref.md",
-    "create-documents.md",
-    "email-workflows.md",
-    "media-processing.md",
-    "database-workflows.md",
-    "data-pipelines.md",
+# Reference files
+reference_files = [
+    "gws-cli.md",
+    "document-creation.md",
+    "pdf-tools.md",
+    "media-tools.md",
+    "conversion-tools.md",
+    "web-parsing.md",
+    "email-reference.md",
+    "database-reference.md",
     "setup.md",
 ]
-for f in legacy_docs:
-    p = cortex_dir / "docs" / f
+for f in reference_files:
+    p = cortex_dir / "references" / f
     if p.exists():
-        check(f"Doc: cortex/docs/{f}", True)
+        check(f"Reference: {f}", True)
     else:
-        warn("Docs", f"Missing cortex/docs/{f} (ok if migrated to sub-skills)")
+        warn("References", f"Missing references/{f}")
+
+# Example files
+example_files = [
+    "office-documents.md",
+    "pdf-workflows.md",
+    "image-processing.md",
+    "video-audio.md",
+    "email-workflows.md",
+    "database-export.md",
+    "data-pipelines.md",
+    "document-conversion.md",
+]
+for f in example_files:
+    p = cortex_dir / "examples" / f
+    if p.exists():
+        check(f"Example: {f}", True)
+    else:
+        warn("Examples", f"Missing examples/{f}")
 
 # ============================================================
 print("\n=== SUMMARY ===")
