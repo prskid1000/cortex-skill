@@ -1,17 +1,29 @@
 ---
-name: cortex
+name: claude-claw
 description: >
   Always-load productivity skill for Google Workspace, documents, media, database, and data pipelines.
   This skill should be used when the user asks to "create an Excel file", "generate a PDF", "make a Word document",
   "build a PowerPoint", "send an email", "query the database", "process an image", "convert a video",
-  "upload to Drive", "create a Google Sheet", "add a note in Obsidian", "search my vault",
-  "take a screenshot", or any document/media/data/notes workflow.
+  "upload to Drive", "create a Google Sheet", "check my ClickUp tasks",
+  "take a screenshot", or any document/media/data workflow.
 priority: critical
 ---
 
-# Cortex — Autonomous Brain & Productivity OS
+# Claude Claw — Productivity OS
 
 > Always-on operating system layer for document creation, tool orchestration, and productivity automation.
+
+---
+
+## Bootstrap (every session)
+
+On first `/claude-claw` invocation each session, run the healthcheck script:
+
+```bash
+python ~/.claude/skills/claude-claw/scripts/healthcheck.py
+```
+
+If any check fails, attempt auto-fix or warn the user.
 
 ---
 
@@ -29,7 +41,7 @@ Detailed tool capabilities, commands, and API surfaces. Load when working with a
 | HTML/XML parsing | [references/web-parsing.md](references/web-parsing.md) |
 | Email / MIME | [references/email-reference.md](references/email-reference.md) |
 | Database / MySQL | [references/database-reference.md](references/database-reference.md) |
-| Obsidian CLI | [references/obsidian-cli.md](references/obsidian-cli.md) |
+| ClickUp CLI | [references/clickup-cli.md](references/clickup-cli.md) |
 | Install / troubleshoot | [references/setup.md](references/setup.md) |
 
 ## Examples
@@ -46,19 +58,7 @@ Working code blocks for common tasks. Load when executing a specific workflow.
 | Database query & export | [examples/database-export.md](examples/database-export.md) |
 | End-to-end pipelines | [examples/data-pipelines.md](examples/data-pipelines.md) |
 | Document conversion | [examples/document-conversion.md](examples/document-conversion.md) |
-| Obsidian vault workflows | [examples/obsidian-workflows.md](examples/obsidian-workflows.md) |
-
-## Scripts
-
-| Script | Purpose | Run |
-|--------|---------|-----|
-| `healthcheck.py` | Verify all tools, packages, MCPs | `python ~/.claude/skills/cortex/scripts/healthcheck.py` |
-
-## Bootstrap (first session of day)
-
-```
-python ~/.claude/skills/cortex/scripts/healthcheck.py
-```
+| ClickUp task management | [examples/clickup-workflows.md](examples/clickup-workflows.md) |
 
 ## Tool Selection Quick Guide
 
@@ -87,7 +87,7 @@ python ~/.claude/skills/cortex/scripts/healthcheck.py
 | Task | Tool |
 |------|------|
 | Google Workspace | `gws` CLI |
-| Obsidian vault | `obsidian` CLI (100+ commands) |
+| ClickUp tasks | `clickup` CLI (tasks, sprints, comments, time, git) |
 | MySQL database | `mcp__mcp_server_mysql__mysql_query` |
 | HTML/XML parsing | `lxml`, `beautifulsoup4` |
 | Email composition | Python `email.mime` + `gws gmail` |

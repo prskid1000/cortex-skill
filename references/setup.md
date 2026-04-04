@@ -40,7 +40,7 @@ python -c "import docx; print('python-docx OK')"
 | Tool | Check command | Install command (winget) | Purpose |
 |------|--------------|------------------------|---------|
 | `gws` | `gws --version` | `npm install -g @anthropic/gws` | Google Workspace CLI (Drive, Sheets, Docs, Slides, Gmail, Calendar) |
-| `obsidian` | `obsidian version` | Built into Obsidian v1.12+ | Obsidian vault CLI (100+ commands: notes, search, tasks, plugins, dev) |
+| `clickup` | `clickup version` | Download binary from [GitHub releases](https://github.com/triptechtravel/clickup-cli/releases) → `~/.local/bin/` | ClickUp task management (tasks, sprints, comments, time, git linking) |
 | `git` | `git --version` | `winget install Git.Git` | Version control |
 | `ffmpeg` | `ffmpeg -version` | `winget install Gyan.FFmpeg` | Video/audio processing, conversion, streaming |
 | `pandoc` | `pandoc --version` | `winget install JohnMacFarlane.Pandoc` | Universal document converter (45+ input, 60+ output formats) |
@@ -183,6 +183,8 @@ gws --account work drive files list
 | ffmpeg not found | `command not found: ffmpeg` | `winget install Gyan.FFmpeg` then restart shell |
 | pandoc not found | `command not found: pandoc` | `winget install JohnMacFarlane.Pandoc` then restart shell |
 | magick not found | `command not found: magick` | `winget install ImageMagick.ImageMagick` then restart shell |
+| clickup not found | `command not found: clickup` | Download binary from [releases](https://github.com/triptechtravel/clickup-cli/releases) → `~/.local/bin/clickup.exe` |
+| clickup auth failed | 401 or "not authenticated" | Run `clickup auth login` then `clickup space select` |
 | MySQL MCP fails | Tool call returns connection error | Check MYSQL_HOST, MYSQL_PORT, MYSQL_USER, MYSQL_PASS in settings.json; verify MySQL is running |
 | MySQL access denied | `Access denied for user` | Verify credentials; check user grants with `SHOW GRANTS FOR 'user'@'host'` |
 | Chrome DevTools MCP fails | Cannot connect to browser | Launch Edge with `--remote-debugging-port=9222`; verify port not blocked |
