@@ -1,11 +1,17 @@
 ---
 name: claude-claw
 description: >
-  Always-load productivity skill for Google Workspace, documents, media, database, and data pipelines.
-  This skill should be used when the user asks to "create an Excel file", "generate a PDF", "make a Word document",
-  "build a PowerPoint", "send an email", "query the database", "process an image", "convert a video",
-  "upload to Drive", "create a Google Sheet", "check my ClickUp tasks",
-  "take a screenshot", or any document/media/data workflow.
+  Create, edit, convert, and export documents, spreadsheets, presentations, PDFs, images, videos, and audio files.
+  Manage Google Workspace (Drive, Sheets, Docs, Gmail), ClickUp tasks, and MySQL databases.
+  TRIGGERS: Excel, Word, PowerPoint, PDF, spreadsheet, document, presentation, slide deck,
+  report, invoice, letter, resume, certificate, chart, table, CSV export,
+  image resize, crop, watermark, thumbnail, screenshot, photo edit,
+  video trim, compress, convert, audio extract, ffmpeg, media processing,
+  email send, Gmail, Google Drive upload, Google Sheets,
+  database query, SQL, MySQL, data export, data pipeline,
+  file conversion, pandoc, HTML to PDF, markdown to docx,
+  ClickUp tasks, sprint, time tracking,
+  openpyxl, python-docx, python-pptx, reportlab, Pillow, ImageMagick.
 priority: critical
 ---
 
