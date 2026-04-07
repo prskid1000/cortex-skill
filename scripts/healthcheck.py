@@ -171,6 +171,109 @@ if not cdt_ok:
     warn("MCP: chrome-devtools", f"Plugin cache at {plugin_mcp_json} is missing or malformed. Install/reinstall via the Claude Code plugin marketplace (chrome-devtools-plugins).")
 
 # ============================================================
+print("\n=== CONTEXT-MODE PLUGIN ===")
+# ============================================================
+#
+# context-mode (https://github.com/mksglu/context-mode) is the MCP plugin
+# that provides ctx_execute, ctx_batch_execute, ctx_search, etc.
+# This block verifies:
+#   1. Plugin is registered and enabled in settings.json
+#   2. node_modules exist in the cached install (MCP server needs them)
+#   3. The Windows "spawn bun ENOENT" fix is applied in the bundles
+#      (bun must be in the executor's needsShell list so shell:true is used)
+
+settings_json = Path.home() / ".claude" / "settings.json"
+ctx_plugin_key = "context-mode@context-mode"
+
+# --- Plugin registration ---
+ctx_registered = False
+ctx_enabled = False
+ctx_install_path = None
+if settings_json.exists():
+    try:
+        settings = json.loads(settings_json.read_text(encoding="utf-8"))
+        ctx_enabled = settings.get("enabledPlugins", {}).get(ctx_plugin_key, False)
+    except Exception as e:
+        warn("context-mode", f"Could not parse settings.json: {e}")
+
+installed_plugins_json = Path.home() / ".claude" / "plugins" / "installed_plugins.json"
+if installed_plugins_json.exists():
+    try:
+        ip = json.loads(installed_plugins_json.read_text(encoding="utf-8"))
+        entries = ip.get("plugins", {}).get(ctx_plugin_key, [])
+        if entries:
+            ctx_registered = True
+            ctx_install_path = Path(entries[0].get("installPath", ""))
+    except Exception as e:
+        warn("context-mode", f"Could not parse installed_plugins.json: {e}")
+
+check("context-mode: registered in installed_plugins.json", ctx_registered)
+check("context-mode: enabled in settings.json", ctx_enabled)
+if not ctx_registered:
+    warn("context-mode", "Install via Claude Code plugin marketplace: mksglu/context-mode")
+
+# --- node_modules in cached install ---
+if ctx_install_path and ctx_install_path.exists():
+    node_modules = ctx_install_path / "node_modules"
+    has_nm = node_modules.is_dir()
+    has_sqlite = (node_modules / "better-sqlite3").is_dir() if has_nm else False
+    check("context-mode: node_modules present", has_nm)
+    check("context-mode: better-sqlite3 installed", has_sqlite)
+    if not has_nm or not has_sqlite:
+        # Auto-fix: run npm install in the cached plugin dir
+        fix = f'cd "{ctx_install_path}" && npm install --silent'
+        check("context-mode: npm install (auto-fix)", False, fix_cmd=fix)
+else:
+    if ctx_registered:
+        warn("context-mode", f"Install path not found: {ctx_install_path}")
+
+# --- Windows bun spawn fix ---
+# On Windows, bun installed via nvm4w/scoop is a POSIX shell script shim.
+# Node.js spawn("bun") fails with ENOENT. The fix: add "bun" to the
+# executor's needsShell list in the bundles so shell:true is used.
+if sys.platform == "win32" and ctx_install_path and ctx_install_path.exists():
+    bundles_patched = True
+    bundles_to_patch = []
+    needle = b'"tsx","ts-node","elixir"'
+    patched_needle = b'"tsx","ts-node","elixir","bun"'
+
+    # Check both cached and marketplace copies
+    marketplace_dir = Path.home() / ".claude" / "plugins" / "marketplaces" / "context-mode"
+    for bundle_dir in [ctx_install_path, marketplace_dir]:
+        if not bundle_dir.exists():
+            continue
+        for bundle_name in ["server.bundle.mjs", "cli.bundle.mjs"]:
+            bundle_path = bundle_dir / bundle_name
+            if bundle_path.exists():
+                content = bundle_path.read_bytes()
+                if patched_needle in content:
+                    pass  # Already patched
+                elif needle in content:
+                    bundles_patched = False
+                    bundles_to_patch.append(bundle_path)
+
+    if bundles_patched:
+        check("context-mode: bun needsShell patch (Windows)", True)
+    else:
+        print(f"  [FAIL] context-mode: bun needsShell patch (Windows)")
+        print(f"         Attempting auto-fix: patching {len(bundles_to_patch)} bundle(s)...")
+        patch_ok = True
+        for bp in bundles_to_patch:
+            try:
+                data = bp.read_bytes()
+                data = data.replace(needle, patched_needle)
+                bp.write_bytes(data)
+                print(f"         [FIXED] {bp}")
+                RESULTS["fixed"].append(f"context-mode: patched {bp.name}")
+            except Exception as e:
+                print(f"         [FIX FAILED] {bp}: {e}")
+                patch_ok = False
+        if patch_ok:
+            RESULTS["pass"].append("context-mode: bun needsShell patch (Windows)")
+        else:
+            RESULTS["fail"].append("context-mode: bun needsShell patch (Windows)")
+
+# ============================================================
 print("\n=== SKILL STRUCTURE ===")
 # ============================================================
 
