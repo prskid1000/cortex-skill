@@ -54,6 +54,7 @@ Detailed tool capabilities, commands, and API surfaces. Load when working with a
 | Code Review Graph (code analysis) | [references/code-review-graph.md](references/code-review-graph.md) |
 | Conversation History (claude-historian) | [references/claude-historian.md](references/claude-historian.md) |
 | Install / troubleshoot | [references/setup.md](references/setup.md) |
+| Claude Code binary patcher | [references/claude-patcher.md](references/claude-patcher.md) |
 
 ## Examples
 
