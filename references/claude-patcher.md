@@ -44,10 +44,7 @@ node ~/.claude/skills/claude-claw/scripts/claude-patcher.js --all
 ```bash
 export ANTHROPIC_BASE_URL="https://your-custom-endpoint"
 export CLAUDE_CODE_MAX_OUTPUT_TOKENS=128000
-export ENABLE_TOOL_SEARCH=true
 ```
-
-**Note:** `ENABLE_TOOL_SEARCH=true` is required for ToolSearch/deferred tool loading on custom endpoints. This is an env var — no binary patch needed.
 
 ## How It Works
 
