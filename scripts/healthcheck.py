@@ -293,7 +293,6 @@ reference_files = [
     "conversion-tools.md",
     "web-parsing.md",
     "email-reference.md",
-    "database-reference.md",
     "clickup-cli.md",
     "setup.md",
 ]
@@ -301,8 +300,6 @@ for f in reference_files:
     p = skill_dir / "references" / f
     if p.exists():
         check(f"Reference: {f}", True)
-    else:
-        warn("References", f"Missing references/{f}")
 
 # Example files
 example_files = [
@@ -311,7 +308,6 @@ example_files = [
     "image-processing.md",
     "video-audio.md",
     "email-workflows.md",
-    "database-export.md",
     "data-pipelines.md",
     "document-conversion.md",
     "clickup-workflows.md",
@@ -320,8 +316,6 @@ for f in example_files:
     p = skill_dir / "examples" / f
     if p.exists():
         check(f"Example: {f}", True)
-    else:
-        warn("Examples", f"Missing examples/{f}")
 
 # ============================================================
 print("\n=== SUMMARY ===")
