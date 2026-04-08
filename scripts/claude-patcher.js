@@ -1,29 +1,17 @@
 #!/usr/bin/env node
 /**
- * Claude Code Binary Patcher
- * Auto-discovers patch points via structural pattern recognition.
- * Works across versions — finds constants by code structure, not variable names.
+ * Claude Code Binary Patcher v2 — Foolproof Edition
+ * Finds constants by VALUE + structural context, not minified variable names.
  *
  * Usage:
- *   node claude-patcher.js [options]
- *
- * Options:
- *   --context-window <N>     Set context window size (6 digits, e.g. 262000)
- *   --max-output <N>         Set max output token upper limit (6 digits)
- *   --autocompact-buffer <N> Set autocompact buffer (5 digits)
- *   --summary-max <N>        Set max autocompact summary tokens (5 digits)
- *   --all                    Apply all patches with defaults
- *   --scan                   Show all discovered constants (no patching)
- *   --restore                Restore from backup
- *   --dry-run                Preview patches without writing
- *   --binary <path>          Path to claude binary (auto-detected)
- *   --help                   Show this help
- *
- * Examples:
- *   node claude-patcher.js --scan
- *   node claude-patcher.js --all
+ *   node claude-patcher.js --all              Apply all default patches
+ *   node claude-patcher.js --scan             Show discovered constants
  *   node claude-patcher.js --context-window 300000
- *   node claude-patcher.js --restore
+ *   node claude-patcher.js --max-output 256000
+ *   node claude-patcher.js --autocompact 20000
+ *   node claude-patcher.js --summary-max 80000
+ *   node claude-patcher.js --restore          Restore from backup
+ *   node claude-patcher.js --dry-run          Preview only
  */
 
 const fs = require("fs");
@@ -31,488 +19,328 @@ const path = require("path");
 
 // ─── CLI ────────────────────────────────────────────────────────────
 const args = process.argv.slice(2);
-const getArg = (name) => { const i = args.indexOf(`--${name}`); return i === -1 ? undefined : args[i + 1]; };
-const hasFlag = (name) => args.includes(`--${name}`);
+const flag = (n) => args.includes(`--${n}`);
+const arg = (n) => { const i = args.indexOf(`--${n}`); return i >= 0 ? args[i + 1] : null; };
 
-if (hasFlag("help") || args.length === 0) {
-  const src = fs.readFileSync(__filename, "utf8").split("\n");
-  const s = src.findIndex(l => l.includes("* Usage:"));
-  const e = src.findIndex((l, i) => i > s && l.includes("*/"));
-  console.log(src.slice(s, e).map(l => l.replace(/^\s*\*\s?/, "")).join("\n"));
+if (flag("help") || args.length === 0) {
+  console.log(`
+Claude Code Binary Patcher v2
+
+  --all                  Apply all patches with defaults
+  --scan                 Show discovered constants (no changes)
+  --context-window <N>   Context window size (6 digits, default: 262000)
+  --max-output <N>       Max output token upper limit (6 digits)
+  --autocompact <N>      Autocompact buffer reserve (5 digits)
+  --summary-max <N>      Summary max tokens (5 digits)
+  --restore              Restore original binary from backup
+  --dry-run              Preview patches without writing
+  --binary <path>        Override binary path
+  --help                 Show this help
+`);
   process.exit(0);
 }
 
 // ─── Find binary ────────────────────────────────────────────────────
 function findBinary() {
   const home = process.env.HOME || process.env.USERPROFILE;
-  const candidates = [
-    getArg("binary"),
+  const try_ = [
+    arg("binary"),
     path.join(home, ".local", "bin", "claude.exe"),
     path.join(home, ".local", "bin", "claude"),
   ].filter(Boolean);
-  for (const p of candidates) if (fs.existsSync(p)) return p;
+  for (const p of try_) if (fs.existsSync(p)) return p;
   try {
-    const { execSync } = require("child_process");
     const cmd = process.platform === "win32" ? "where claude" : "which claude";
-    const r = execSync(cmd, { encoding: "utf8" }).trim().split("\n")[0];
+    const r = require("child_process").execSync(cmd, { encoding: "utf8" }).trim().split("\n")[0];
     if (r && fs.existsSync(r)) return r;
   } catch {}
   return null;
 }
 
-const TARGET = findBinary();
-if (!TARGET) { console.error("ERROR: Cannot find claude binary. Use --binary <path>"); process.exit(1); }
-const BACKUP = TARGET + ".bak";
-const applyAll = hasFlag("all");
+const BIN = findBinary();
+if (!BIN) { console.error("ERROR: Cannot find claude binary. Use --binary <path>"); process.exit(1); }
+const BAK = BIN + ".bak";
 
-// ─── Helpers ────────────────────────────────────────────────────────
-function findAll(buf, pat) {
-  const b = typeof pat === "string" ? Buffer.from(pat) : pat;
+// ─── Restore ────────────────────────────────────────────────────────
+if (flag("restore")) {
+  if (!fs.existsSync(BAK)) { console.error("No backup found at", BAK); process.exit(1); }
+  try { fs.copyFileSync(BAK, BIN); console.log("Restored from backup."); }
+  catch (e) { console.error(e.code === "EBUSY" ? "Binary locked — close Claude first." : e.message); }
+  process.exit(0);
+}
+
+// ─── Read binary ────────────────────────────────────────────────────
+console.log("=== Claude Code Binary Patcher v2 ===");
+console.log(`Binary: ${BIN} (${(fs.statSync(BIN).size / 1e6).toFixed(1)} MB)\n`);
+const buf = fs.readFileSync(BIN);
+const txt = buf.toString("utf8");
+
+// ─── Discovery helpers ──────────────────────────────────────────────
+function allIndexes(str, sub) {
   const r = []; let i = 0;
-  while ((i = buf.indexOf(b, i)) !== -1) { r.push(i); i++; }
+  while ((i = str.indexOf(sub, i)) !== -1) { r.push(i); i++; }
   return r;
 }
 
-function strAt(buf, offset, len) {
-  return buf.slice(offset, Math.min(buf.length, offset + len)).toString("utf8");
+function ctx(offset, before, after) {
+  return txt.slice(Math.max(0, offset - before), offset + after);
 }
 
-function strBefore(buf, offset, len) {
-  return buf.slice(Math.max(0, offset - len), offset).toString("utf8");
-}
-
-// ─── Auto-Discovery ─────────────────────────────────────────────────
-function discover(buf) {
+// ─── Discover by value + structural anchor ──────────────────────────
+function discover() {
   const found = {};
 
-  // ── 1. CONTEXT WINDOW ──
-  // Strategy: find "function Tv(" → extract the default return variable name
-  //           → find "var VARNAME=NNNNNN," → that's the context window default
+  // 1. CONTEXT WINDOW — find VAR=200000, where "return VAR}" exists nearby
+  //    Anchor: the context window function returns this var as default, with "return 1e6" for special cases
   {
-    const tvMatches = findAll(buf, "function Tv(");
-    for (const tvOff of tvMatches) {
-      const body = strAt(buf, tvOff, 400);
-      // Tv returns 1e6 for special cases, then "return VARNAME" as default
-      // Find the last "return VARNAME}" — that's the default fallback
-      const retMatch = body.match(/return\s+([a-zA-Z_$][a-zA-Z0-9_$]*)\s*\}/);
-      if (!retMatch) continue;
-      const varName = retMatch[1];
-
-      // Now find where this variable is declared: "var VARNAME=NNNNNN,"
-      const declPat = `var ${varName}=`;
-      const declMatches = findAll(buf, declPat);
-      for (const declOff of declMatches) {
-        const after = strAt(buf, declOff + declPat.length, 20);
-        const valMatch = after.match(/^(\d{6}),/);
-        if (valMatch) {
-          const value = parseInt(valMatch[1], 10);
-          const fullPattern = `${varName}=${valMatch[1]},`;
-          found.contextWindow = {
-            name: "Context window default",
-            varName,
-            currentValue: value,
-            pattern: fullPattern,
-            occurrences: findAll(buf, fullPattern).length,
-          };
-          break;
-        }
-      }
-      if (found.contextWindow) break;
+    const re = /([a-zA-Z_$][a-zA-Z0-9_$]*)=200000,/g;
+    let m, hits = [];
+    while ((m = re.exec(txt)) !== null) {
+      const varName = m[1];
+      // Verify: this var must be used as "return VAR}" somewhere (context window function)
+      const returnPat = `return ${varName}}`;
+      const returnIdx = txt.indexOf(returnPat);
+      if (returnIdx === -1) continue;
+      // Extra check: the function containing "return VAR}" should also have "return 1e6"
+      const funcCtx = txt.slice(Math.max(0, returnIdx - 500), returnIdx);
+      if (!funcCtx.includes("return 1e6")) continue;
+      hits.push({ varName, offset: m.index, pattern: `${varName}=200000,` });
+    }
+    if (hits.length >= 2) {
+      found.contextWindow = { value: 200000, digits: 6, hits, default: 262000,
+        desc: "Context window default" };
     }
   }
 
-  // ── 2. MAX OUTPUT TOKENS ──
-  // Strategy: find 'includes("opus-4-6"))' followed by VAR=DIGITS,VAR=DIGITS
-  //           This is the S6H function's model-specific branch
+  // 2. MAX OUTPUT — find =128000 after model name includes("opus-4-6") or includes("sonnet-4-6")
+  //    Anchor: model name strings that never change
   {
-    found.maxOutput = {};
-    const models = [
-      { search: 'includes("opus-4-6"))', label: "opus-4-6" },
-      { search: 'includes("sonnet-4-6"))', label: "sonnet-4-6" },
-    ];
-    for (const { search, label } of models) {
-      const matches = findAll(buf, search);
-      for (const off of matches) {
-        const after = strAt(buf, off + search.length, 60);
-        // Match: $=NNNNN,q=NNNNNN or similar VAR=DIGITS,VAR=DIGITS
-        const m = after.match(/^([a-zA-Z_$][a-zA-Z0-9_$]*)=(\d+),([a-zA-Z_$][a-zA-Z0-9_$]*)=(\d+)/);
-        if (m) {
-          const [, dVar, dVal, uVar, uVal] = m;
-          const fullPattern = `${search}${dVar}=${dVal},${uVar}=${uVal}`;
-          found.maxOutput[label] = {
-            name: `Max output (${label})`,
-            defaultVar: dVar, defaultValue: parseInt(dVal, 10),
-            upperVar: uVar, upperValue: parseInt(uVal, 10),
-            pattern: fullPattern,
-            occurrences: findAll(buf, fullPattern).length,
-          };
-          break; // take first code match, skip dupes
-        }
-      }
+    const re = /includes\("(opus-4-6|sonnet-4-6)"\)\)([a-zA-Z_$][a-zA-Z0-9_$]*)=(\d+),([a-zA-Z_$][a-zA-Z0-9_$]*)=(\d+)/g;
+    let m, hits = [];
+    while ((m = re.exec(txt)) !== null) {
+      const upper = parseInt(m[5], 10);
+      hits.push({
+        model: m[1], offset: m.index, upperValue: upper,
+        full: m[0], // the exact match for replacement
+        defaultVar: m[2], defaultVal: m[3], upperVar: m[4], upperVal: m[5],
+      });
     }
-    if (Object.keys(found.maxOutput).length === 0) delete found.maxOutput;
-  }
-
-  // ── 3. AUTOCOMPACT BUFFER ──
-  // Strategy: find the autocompact threshold function.
-  // It calculates: effectiveWindow - BUFFER. The buffer var is assigned
-  // in a cluster with warning (20000), error (20000), and blocking (3000) thresholds.
-  // We find the cluster by locating multiple =20000, assignments near =3000,
-  // then identify the buffer as the remaining 5-digit constant in that cluster.
-  {
-    // Find clusters: look for =20000, and check if =3000, is nearby
-    const markers = findAll(buf, "=20000,");
-    const seen = new Set();
-    for (const mOff of markers) {
-      const clusterStart = Math.max(0, mOff - 200);
-      const ctx = strAt(buf, clusterStart, 500);
-      if (!ctx.includes("=3000,")) continue;
-
-      // Parse all VAR=DIGITS, in this cluster
-      const re = /([a-zA-Z_$][a-zA-Z0-9_$]*)=(\d+),/g;
-      let m;
-      const entries = [];
-      while ((m = re.exec(ctx)) !== null) {
-        entries.push({ varName: m[1], value: parseInt(m[2], 10) });
-      }
-
-      // The buffer is the unique 5-digit value that isn't 20000 or 3000
-      // and is in the range 5000-30000 (reasonable for a token buffer)
-      const twentyKCount = entries.filter(e => e.value === 20000).length;
-      const threeKCount = entries.filter(e => e.value === 3000).length;
-      if (twentyKCount < 2 || threeKCount < 1) continue; // not the right cluster
-
-      const bufferEntry = entries.find(e =>
-        e.value !== 20000 && e.value !== 3000 &&
-        e.value >= 5000 && e.value <= 30000 &&
-        !seen.has(e.varName)
-      );
-      if (!bufferEntry) continue;
-
-      const fullPattern = `${bufferEntry.varName}=${bufferEntry.value},`;
-      found.autocompactBuffer = {
-        name: "Autocompact buffer",
-        varName: bufferEntry.varName,
-        currentValue: bufferEntry.value,
-        pattern: fullPattern,
-        occurrences: findAll(buf, fullPattern).length,
-      };
-
-      // Collect other thresholds in cluster
-      found.thresholds = [];
-      for (const e of entries) {
-        if (e.varName === bufferEntry.varName) continue;
-        let label = "unknown";
-        if (e.value === 20000) label = "warning/error threshold";
-        else if (e.value === 3000) label = "blocking limit";
-        else if (e.value <= 5) label = "max failures/min messages";
-        else if (e.value >= 1000000) label = "cooldown (ms)";
-        else if (e.value === 8000) label = "narrow mode output cap";
-        found.thresholds.push({ varName: e.varName, value: e.value, label });
-      }
-      break;
+    if (hits.length >= 2) {
+      found.maxOutput = { hits, desc: "Max output token upper limits" };
     }
   }
 
-  // ── 4. SUMMARY MAX TOKENS ──
-  // Strategy: find the compact summary config object.
-  // It has the structure: {minTokens:X,minTextBlockMessages:N,maxTokens:NNNNN}
-  // We find it by locating "minTextBlockMessages:" — a unique key name —
-  // then parse the surrounding object to extract maxTokens value.
+  // 3. AUTOCOMPACT BUFFER — find VAR=13000, near =20000, and =3000, cluster
+  //    Anchor: the "autocompact-experiment-hint" string nearby
   {
-    const matches = findAll(buf, "minTextBlockMessages:");
-    for (const off of matches) {
-      const ctx = strAt(buf, off - 80, 200);
-      // Match the full config object regardless of specific values
-      const m = ctx.match(/minTokens:([^,]+),minTextBlockMessages:(\d+),maxTokens:(\d+)/);
-      if (m) {
-        const maxVal = parseInt(m[3], 10);
-        const pattern = `minTextBlockMessages:${m[2]},maxTokens:${m[3]}`;
-        found.summaryMax = {
-          name: "Summary max tokens",
-          currentValue: maxVal,
-          minTokens: m[1],
-          minMessages: parseInt(m[2], 10),
-          pattern,
-          fullObjectPattern: `minTokens:${m[1]},${pattern}`,
-          occurrences: findAll(buf, pattern).length,
-        };
-        break;
+    const re = /([a-zA-Z_$][a-zA-Z0-9_$]*)=(\d{4,5}),/g;
+    let m, hits = [];
+    while ((m = re.exec(txt)) !== null) {
+      const val = parseInt(m[2], 10);
+      if (val < 5000 || val > 30000 || val === 20000 || val === 3000) continue;
+      const c = ctx(m.index, 200, 200);
+      if (c.includes("=20000,") && c.includes("=3000,") && c.includes("autocompact")) {
+        hits.push({ varName: m[1], value: val, offset: m.index, pattern: `${m[1]}=${m[2]},` });
       }
+    }
+    if (hits.length >= 2) {
+      found.autocompact = { value: hits[0].value, digits: String(hits[0].value).length,
+        hits, default: 20000, desc: "Autocompact buffer reserve" };
     }
   }
 
-  // ── 5. OTHER USEFUL CONSTANTS (scan-only) ──
-  // Default output tokens (xJ7), fallback upper limit (mJ7)
+  // 4. SUMMARY MAX — find minTextBlockMessages:N,maxTokens:NNNNN
+  //    Anchor: the key name "minTextBlockMessages" is unique and semantic
   {
-    if (found.contextWindow) {
-      // These are declared right after context window var
-      const declPat = `${found.contextWindow.pattern}`;
-      const matches = findAll(buf, declPat);
-      if (matches.length > 0) {
-        const after = strAt(buf, matches[0] + declPat.length, 200);
-        found.relatedConstants = [];
-        const re = /([a-zA-Z_$][a-zA-Z0-9_$]*)=(\d+)/g;
-        let m;
-        while ((m = re.exec(after)) !== null) {
-          const [, v, n] = m;
-          const num = parseInt(n, 10);
-          let label = `${num}`;
-          if (num === 20000) label = "output token reserve cap";
-          else if (num === 32000) label = "fallback default output";
-          else if (num === 64000) label = "fallback upper limit / escalation";
-          else if (num === 8000) label = "narrow mode output cap";
-          found.relatedConstants.push({ varName: v, value: num, label });
-          if (found.relatedConstants.length >= 6) break;
-        }
-      }
+    const re = /(minTokens:[^,]+,minTextBlockMessages:\d+,maxTokens:)(\d+)/g;
+    let m, hits = [];
+    while ((m = re.exec(txt)) !== null) {
+      hits.push({ offset: m.index, value: parseInt(m[2], 10),
+        prefix: m[1], pattern: m[0] });
+    }
+    if (hits.length >= 2) {
+      found.summaryMax = { value: hits[0].value, digits: String(hits[0].value).length,
+        hits, default: 80000, desc: "Summary max tokens" };
     }
   }
 
   return found;
 }
 
-// ─── Build Patches ──────────────────────────────────────────────────
-function buildPatches(d) {
-  const patches = [];
+const d = discover();
 
-  // Context window
-  const ctxArg = getArg("context-window") || (applyAll ? "262000" : null);
-  if (ctxArg) {
-    const val = parseInt(ctxArg, 10);
-    if (!d.contextWindow) { console.error("ERROR: Context window constant not found in binary."); process.exit(1); }
-    if (isNaN(val) || String(val).length !== String(d.contextWindow.currentValue).length) {
-      console.error(`ERROR: --context-window must be ${String(d.contextWindow.currentValue).length} digits`);
-      process.exit(1);
+// ─── Scan mode ──────────────────────────────────────────────────────
+if (flag("scan")) {
+  console.log("=== Discovered Constants ===\n");
+  const show = (key, info) => {
+    if (!info) { console.log(`${key}: NOT FOUND\n`); return; }
+    console.log(`${info.desc}:`);
+    console.log(`  Current value: ${info.value ?? info.hits[0]?.upperValue ?? "?"}`);
+    console.log(`  Occurrences:   ${info.hits.length}`);
+    for (const h of info.hits) {
+      console.log(`  @ offset ${h.offset}: ${h.pattern || h.full || ""}`);
     }
-    if (val === d.contextWindow.currentValue) {
-      console.log(`Context window already ${val}, skipping.`);
-    } else {
-      patches.push({
-        name: `Context window: ${d.contextWindow.currentValue} -> ${val}`,
-        find: Buffer.from(d.contextWindow.pattern),
-        replace: Buffer.from(`${d.contextWindow.varName}=${val},`),
-      });
-    }
-  }
+    console.log();
+  };
+  show("contextWindow", d.contextWindow);
+  show("maxOutput", d.maxOutput);
+  show("autocompact", d.autocompact);
+  show("summaryMax", d.summaryMax);
 
-  // Max output
-  const moArg = getArg("max-output");
-  if (moArg) {
-    const val = parseInt(moArg, 10);
-    if (!d.maxOutput) { console.error("ERROR: Max output constants not found in binary."); process.exit(1); }
-    for (const [label, info] of Object.entries(d.maxOutput)) {
-      const oldUpper = String(info.upperValue);
-      if (String(val).length !== oldUpper.length) {
-        console.error(`ERROR: --max-output must be ${oldUpper.length} digits to patch ${label}`);
-        process.exit(1);
-      }
-      if (val === info.upperValue) {
-        console.log(`Max output (${label}) already ${val}, skipping.`);
-      } else {
-        patches.push({
-          name: `Max output (${label}): ${info.upperValue} -> ${val}`,
-          find: Buffer.from(info.pattern),
-          replace: Buffer.from(info.pattern.replace(oldUpper, String(val))),
-        });
-      }
-    }
-  }
-
-  // Autocompact buffer
-  const abArg = getArg("autocompact-buffer");
-  if (abArg) {
-    const val = parseInt(abArg, 10);
-    if (!d.autocompactBuffer) { console.error("ERROR: Autocompact buffer not found in binary."); process.exit(1); }
-    const oldStr = String(d.autocompactBuffer.currentValue);
-    if (String(val).length !== oldStr.length) {
-      console.error(`ERROR: --autocompact-buffer must be ${oldStr.length} digits`);
-      process.exit(1);
-    }
-    if (val === d.autocompactBuffer.currentValue) {
-      console.log(`Autocompact buffer already ${val}, skipping.`);
-    } else {
-      patches.push({
-        name: `Autocompact buffer: ${d.autocompactBuffer.currentValue} -> ${val}`,
-        find: Buffer.from(d.autocompactBuffer.pattern),
-        replace: Buffer.from(`${d.autocompactBuffer.varName}=${val},`),
-      });
-    }
-  }
-
-  // Summary max
-  const smArg = getArg("summary-max");
-  if (smArg) {
-    const val = parseInt(smArg, 10);
-    if (!d.summaryMax) { console.error("ERROR: Summary max not found in binary."); process.exit(1); }
-    const oldStr = String(d.summaryMax.currentValue);
-    if (String(val).length !== oldStr.length) {
-      console.error(`ERROR: --summary-max must be ${oldStr.length} digits`);
-      process.exit(1);
-    }
-    if (val === d.summaryMax.currentValue) {
-      console.log(`Summary max already ${val}, skipping.`);
-    } else {
-      const oldPat = d.summaryMax.pattern;
-      const newPat = oldPat.replace(String(d.summaryMax.currentValue), String(val));
-      patches.push({
-        name: `Summary max: ${d.summaryMax.currentValue} -> ${val}`,
-        find: Buffer.from(oldPat),
-        replace: Buffer.from(newPat),
-      });
-    }
-  }
-
-  return patches;
+  const missing = ["contextWindow", "maxOutput", "autocompact", "summaryMax"].filter(k => !d[k]);
+  if (missing.length) console.log(`WARNING: Could not find: ${missing.join(", ")}`);
+  process.exit(0);
 }
 
-// ─── Apply Patches ──────────────────────────────────────────────────
-function applyPatches(buf, patches) {
-  const dryRun = hasFlag("dry-run");
-  let total = 0;
+// ─── Build patches ──────────────────────────────────────────────────
+const patches = [];
+const all = flag("all");
+const dry = flag("dry-run");
 
-  for (const patch of patches) {
-    console.log(`--- ${patch.name} ---`);
-
-    const already = findAll(buf, patch.replace);
-    if (already.length > 0) {
-      console.log(`  Already applied (${already.length}x)\n`);
-      continue;
+// Context window
+{
+  const val = arg("context-window") || (all ? "262000" : null);
+  if (val && d.contextWindow) {
+    const n = parseInt(val, 10);
+    if (String(n).length !== d.contextWindow.digits) {
+      console.error(`ERROR: --context-window must be ${d.contextWindow.digits} digits`); process.exit(1);
     }
-
-    const hits = findAll(buf, patch.find);
-    if (hits.length === 0) {
-      console.error(`  WARNING: Pattern not found\n`);
-      continue;
+    for (const h of d.contextWindow.hits) {
+      patches.push({ name: `Context window ${h.offset}`, find: h.pattern, replace: `${h.varName}=${n},` });
     }
-
-    let count = 0;
-    for (const off of hits) {
-      if (patch.contextCheck) {
-        const ctx = strAt(buf, off - 200, 400 + patch.find.length);
-        if (!ctx.includes(patch.contextCheck)) {
-          console.log(`  Offset ${off}: context mismatch, skipping`);
-          continue;
-        }
-      }
-      if (dryRun) {
-        console.log(`  [DRY] Would patch at offset ${off}`);
-      } else {
-        patch.replace.copy(buf, off);
-        console.log(`  Patched at offset ${off}`);
-      }
-      count++;
-    }
-    console.log(`  ${count}/${hits.length} ${dryRun ? "found" : "patched"}\n`);
-    total += count;
+  } else if (val && !d.contextWindow) {
+    console.error("ERROR: Context window constant not found in binary"); process.exit(1);
   }
-  return total;
 }
 
-// ─── Main ───────────────────────────────────────────────────────────
-(function main() {
-  console.log("=== Claude Code Binary Patcher ===");
-  console.log(`Binary: ${TARGET}`);
-  console.log(`Size:   ${(fs.statSync(TARGET).size / 1e6).toFixed(1)} MB\n`);
-
-  // Restore
-  if (hasFlag("restore")) {
-    if (!fs.existsSync(BACKUP)) { console.error("No backup at", BACKUP); process.exit(1); }
-    try { fs.copyFileSync(BACKUP, TARGET); console.log("Restored from backup."); }
-    catch (e) { if (e.code === "EBUSY") console.log("Binary locked — close Claude first."); else throw e; }
-    return;
-  }
-
-  const buf = fs.readFileSync(TARGET);
-  console.log("Discovering constants...\n");
-  const d = discover(buf);
-
-  // Scan mode
-  if (hasFlag("scan")) {
-    console.log("=== Discovered Constants ===\n");
-
-    const show = (label, obj) => {
-      if (!obj) { console.log(`${label}: NOT FOUND\n`); return; }
-      console.log(`${label}:`);
-      if (obj.varName) console.log(`  Variable:  ${obj.varName}`);
-      console.log(`  Value:     ${obj.currentValue}`);
-      console.log(`  Pattern:   ${obj.pattern}`);
-      console.log(`  Found:     ${obj.occurrences}x\n`);
-    };
-
-    show("Context Window", d.contextWindow);
-    show("Autocompact Buffer", d.autocompactBuffer);
-    show("Summary Max Tokens", d.summaryMax);
-
-    if (d.maxOutput) {
-      for (const [label, info] of Object.entries(d.maxOutput)) {
-        console.log(`Max Output (${label}):`);
-        console.log(`  Default:   ${info.defaultVar}=${info.defaultValue}`);
-        console.log(`  Upper:     ${info.upperVar}=${info.upperValue}`);
-        console.log(`  Pattern:   ${info.pattern}`);
-        console.log(`  Found:     ${info.occurrences}x\n`);
+// Max output
+{
+  const val = arg("max-output") || (all ? null : null); // no default for --all, too model-specific
+  if (val && d.maxOutput) {
+    const n = parseInt(val, 10);
+    for (const h of d.maxOutput.hits) {
+      if (String(n).length !== h.upperVal.length) {
+        console.error(`ERROR: --max-output must be ${h.upperVal.length} digits for ${h.model}`); process.exit(1);
       }
+      const newFull = h.full.replace(new RegExp(`${h.upperVar}=${h.upperVal}`), `${h.upperVar}=${n}`);
+      patches.push({ name: `Max output (${h.model}) ${h.offset}`, find: h.full, replace: newFull });
+    }
+  } else if (val && !d.maxOutput) {
+    console.error("ERROR: Max output constants not found in binary"); process.exit(1);
+  }
+}
+
+// Autocompact buffer
+{
+  const val = arg("autocompact") || (all ? String(d.autocompact?.default ?? 20000) : null);
+  if (val && d.autocompact) {
+    const n = parseInt(val, 10);
+    if (String(n).length !== d.autocompact.digits) {
+      console.error(`ERROR: --autocompact must be ${d.autocompact.digits} digits`); process.exit(1);
+    }
+    for (const h of d.autocompact.hits) {
+      patches.push({ name: `Autocompact buffer ${h.offset}`, find: h.pattern, replace: `${h.varName}=${n},` });
+    }
+  } else if (val && !d.autocompact) {
+    console.error("ERROR: Autocompact buffer not found in binary"); process.exit(1);
+  }
+}
+
+// Summary max
+{
+  const val = arg("summary-max") || (all ? String(d.summaryMax?.default ?? 80000) : null);
+  if (val && d.summaryMax) {
+    const n = parseInt(val, 10);
+    if (String(n).length !== d.summaryMax.digits) {
+      console.error(`ERROR: --summary-max must be ${d.summaryMax.digits} digits`); process.exit(1);
+    }
+    for (const h of d.summaryMax.hits) {
+      const newPat = h.prefix + String(n);
+      patches.push({ name: `Summary max ${h.offset}`, find: h.pattern, replace: newPat });
+    }
+  } else if (val && !d.summaryMax) {
+    console.error("ERROR: Summary max not found in binary"); process.exit(1);
+  }
+}
+
+if (patches.length === 0) { console.log("Nothing to patch."); process.exit(0); }
+
+// ─── Backup ─────────────────────────────────────────────────────────
+if (!fs.existsSync(BAK)) {
+  fs.copyFileSync(BIN, BAK);
+  console.log(`Backup -> ${BAK}`);
+} else {
+  console.log(`Backup at ${BAK}`);
+}
+
+// ─── Apply ──────────────────────────────────────────────────────────
+// Deduplicate patches by find string, then patch ALL occurrences
+const uniquePatches = new Map();
+for (const p of patches) {
+  if (!uniquePatches.has(p.find)) uniquePatches.set(p.find, p);
+}
+
+let total = 0;
+for (const [, p] of uniquePatches) {
+  const findBuf = Buffer.from(p.find);
+  const replaceBuf = Buffer.from(p.replace);
+
+  // Find ALL occurrences
+  const offsets = [];
+  let searchFrom = 0;
+  while (true) {
+    const idx = buf.indexOf(findBuf, searchFrom);
+    if (idx === -1) break;
+    offsets.push(idx);
+    searchFrom = idx + findBuf.length;
+  }
+
+  if (offsets.length === 0) {
+    // Check if already patched
+    if (buf.indexOf(replaceBuf) !== -1) {
+      console.log(`[SKIP] ${p.name} — already patched`);
     } else {
-      console.log("Max Output: NOT FOUND\n");
+      console.log(`[MISS] ${p.name} — pattern not found`);
     }
+    continue;
+  }
 
-    if (d.thresholds?.length) {
-      console.log("Threshold Cluster:");
-      for (const t of d.thresholds) console.log(`  ${t.varName}=${t.value} (${t.label})`);
-      console.log();
+  for (const off of offsets) {
+    if (dry) {
+      console.log(`[DRY]  ${p.name} @ ${off}`);
+    } else {
+      replaceBuf.copy(buf, off);
+      console.log(`[OK]   ${p.name} @ ${off}`);
     }
-
-    if (d.relatedConstants?.length) {
-      console.log("Related Constants (near context window):");
-      for (const c of d.relatedConstants) console.log(`  ${c.varName}=${c.value} (${c.label})`);
-      console.log();
-    }
-
-    return;
+    total++;
   }
+}
 
-  // Build & apply
-  const patches = buildPatches(d);
-  if (patches.length === 0) { console.log("Nothing to patch. Use --help for options."); process.exit(0); }
+if (dry) { console.log(`\nDry run: ${total} patch points.`); process.exit(0); }
+if (total === 0) { console.log("\nNo new patches applied."); process.exit(0); }
 
-  if (!fs.existsSync(BACKUP)) {
-    console.log("Backup ->", BACKUP);
-    fs.copyFileSync(TARGET, BACKUP);
-  } else {
-    console.log("Backup at", BACKUP);
-  }
-  console.log();
+// ─── Write ──────────────────────────────────────────────────────────
+const TMP = BIN + ".patched";
+try {
+  fs.writeFileSync(BIN, buf);
+  console.log(`\nWritten -> ${BIN}`);
+} catch (e) {
+  if (e.code === "EBUSY" || e.code === "EPERM") {
+    fs.writeFileSync(TMP, buf);
+    console.log(`\nBinary locked. Written -> ${TMP}`);
+    console.log(`Close Claude, then:\n  ${process.platform === "win32"
+      ? `Copy-Item -Force "${TMP}" "${BIN}"`
+      : `cp "${TMP}" "${BIN}"`}`);
+  } else throw e;
+}
 
-  const total = applyPatches(buf, patches);
-
-  if (hasFlag("dry-run")) { console.log(`Dry run: ${total} patch point(s).`); return; }
-  if (total === 0) { console.log("No new patches applied."); process.exit(0); }
-
-  // Write
-  const TEMP = TARGET + ".patched";
-  let writtenTo;
-  try {
-    fs.writeFileSync(TARGET, buf);
-    writtenTo = TARGET;
-    console.log(`Written -> ${TARGET}`);
-  } catch (e) {
-    if (e.code === "EBUSY" || e.code === "EPERM") {
-      fs.writeFileSync(TEMP, buf);
-      writtenTo = TEMP;
-      console.log(`Locked. Written -> ${TEMP}`);
-      console.log(`\nClose Claude, then:`);
-      console.log(process.platform === "win32"
-        ? `  Copy-Item -Force "${TEMP}" "${TARGET}"`
-        : `  cp "${TEMP}" "${TARGET}"`);
-    } else throw e;
-  }
-
-  // Verify
-  console.log("\n=== Verify ===");
-  const v = fs.readFileSync(writtenTo);
-  for (const p of patches) {
-    const ok = findAll(v, p.replace).length > 0;
-    console.log(`[${ok ? "OK" : "FAIL"}] ${p.name}`);
-  }
-  console.log(`\nRestore: node ${__filename} --restore`);
-})();
+// ─── Verify ─────────────────────────────────────────────────────────
+console.log("\n=== Verify ===");
+const v = fs.readFileSync(fs.existsSync(TMP) && !fs.existsSync(BIN) ? TMP : BIN);
+let ok = 0, fail = 0;
+for (const p of patches) {
+  const found = v.indexOf(Buffer.from(p.replace)) !== -1;
+  console.log(`[${found ? "OK" : "FAIL"}] ${p.name}`);
+  found ? ok++ : fail++;
+}
+console.log(`\n${ok} OK, ${fail} failed. Restore: node ${__filename} --restore`);

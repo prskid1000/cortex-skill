@@ -123,7 +123,7 @@ else:
 print("\n=== MCP SERVERS ===")
 # ============================================================
 #
-# The skill depends on two MCP servers. This block only VERIFIES config;
+# This block VERIFIES MCP config;
 # it does not patch ~/.claude.json automatically (that file is the harness's
 # main config and is too high-stakes to rewrite from a script). On failure
 # the exact fix is printed and the user applies it manually, then restarts
@@ -155,27 +155,6 @@ check("MCP: mysql (~/.claude.json -> mcpServers.mcp_server_mysql)", mysql_ok)
 if not mysql_ok:
     warn("MCP: mysql", "Add to ~/.claude.json under mcpServers. See references/setup.md -> 'MySQL' for the exact JSON block. Restart Claude Code after editing.")
 
-# --- Code Review Graph MCP ---
-crg_ok = False
-if claude_json.exists():
-    try:
-        cfg = json.loads(claude_json.read_text(encoding="utf-8"))
-        entry = cfg.get("mcpServers", {}).get("code-review-graph")
-        if entry and entry.get("command") in ("code-review-graph", "uvx") and "serve" in entry.get("args", []):
-            crg_ok = True
-    except Exception as e:
-        warn("MCP: code-review-graph", f"Could not parse ~/.claude.json: {e}")
-
-# Also check CLI availability
-if not crg_ok:
-    crg_cli_ok, _ = run_cmd("code-review-graph --version")
-    if crg_cli_ok:
-        warn("MCP: code-review-graph", "CLI installed but MCP not configured in ~/.claude.json. Run: code-review-graph install --platform claude-code")
-    else:
-        warn("MCP: code-review-graph", "Not installed. Run: pip install code-review-graph && code-review-graph install")
-
-check("MCP: code-review-graph (~/.claude.json -> mcpServers.code-review-graph)", crg_ok)
-
 # --- Chrome DevTools MCP (plugin-provided) ---
 cdt_ok = False
 if plugin_mcp_json.exists():
@@ -190,25 +169,6 @@ if plugin_mcp_json.exists():
 check("MCP: chrome-devtools (plugin .mcp.json)", cdt_ok)
 if not cdt_ok:
     warn("MCP: chrome-devtools", f"Plugin cache at {plugin_mcp_json} is missing or malformed. Install/reinstall via the Claude Code plugin marketplace (chrome-devtools-plugins).")
-
-# --- Claude Historian MCP (plugin-provided) ---
-installed_plugins_json = Path.home() / ".claude" / "plugins" / "installed_plugins.json"
-historian_plugin_key = "claude-historian@claude-emporium"
-historian_ok = False
-if installed_plugins_json.exists():
-    try:
-        ip = json.loads(installed_plugins_json.read_text(encoding="utf-8"))
-        historian_entries = ip.get("plugins", {}).get(historian_plugin_key, [])
-        if historian_entries:
-            historian_path = Path(historian_entries[0].get("installPath", ""))
-            if historian_path.exists():
-                historian_ok = True
-    except Exception as e:
-        warn("MCP: claude-historian", f"Could not parse installed_plugins.json: {e}")
-
-check("MCP: claude-historian (plugin claude-emporium)", historian_ok)
-if not historian_ok:
-    warn("MCP: claude-historian", "Install via: /plugin marketplace add Vvkmnn/claude-emporium && /plugin install claude-historian@claude-emporium")
 
 # ============================================================
 print("\n=== CONTEXT-MODE PLUGIN ===")
@@ -335,8 +295,6 @@ reference_files = [
     "email-reference.md",
     "database-reference.md",
     "clickup-cli.md",
-    "code-review-graph.md",
-    "claude-historian.md",
     "setup.md",
 ]
 for f in reference_files:
