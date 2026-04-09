@@ -132,10 +132,36 @@ gws calendar events insert --params '{"calendarId": "primary"}' --json '{"summar
 
 ### Windows / Python note
 
-On Windows, `gws` is installed as a `.cmd` shim, so calling it from Python via `subprocess.run(["gws", ...])` will fail with `FileNotFoundError` unless you either:
+On Windows, `gws` is installed as a `.cmd` shim. **Both common approaches have critical pitfalls:**
 
-- pass `shell=True`: `subprocess.run("gws drive files list --format json", shell=True, ...)`, or
-- resolve the shim first: `subprocess.run([shutil.which("gws"), "drive", "files", "list"], ...)`.
+| Approach | Problem |
+|----------|---------|
+| `shell=True` | `cmd.exe` interprets `\|`, `&`, `>`, `<` inside `--json` values as shell operators. Breaks any JSON containing these characters (e.g., `"Report 3 \| Report 6"`). Error: `'Report' is not recognized as an internal or external command`. |
+| `shell=False` + `shutil.which("gws")` | Resolves to the `.CMD` file, which cannot be executed without a shell. Fails with `FileNotFoundError` or `EFTYPE`. |
+
+**Recommended: Call `node run-gws.js` directly (bypasses shell entirely):**
+
+```python
+import subprocess, shutil
+
+NODE = shutil.which("node")
+# Find the JS entry point — check yours with: cat "$(which gws)"
+GWS_JS = "C:/nvm4w/nodejs/node_modules/@googleworkspace/cli/run-gws.js"
+
+r = subprocess.run(
+    [NODE, GWS_JS, 'docs', 'documents', 'batchUpdate',
+     '--params', '{"documentId": "DOC_ID"}',
+     '--json', body_json],  # Safe: |, &, > in JSON are just bytes
+    capture_output=True, text=True
+)
+```
+
+**Why this works:** No shell → special characters in JSON aren't interpreted. No `.CMD` shim → `subprocess.run` list form works directly.
+
+**Windows command line length limit:** `CreateProcess` has a 32,768-character limit. For large `--json` payloads (e.g., `batchUpdate` with many requests), **chunk into batches of 6-8 requests per call**.
+
+> **Simple CLI commands** (no special chars in JSON) can still use `shell=True` safely:
+> `subprocess.run("gws drive files list --format json", shell=True, ...)`
 
 ---
 
@@ -719,13 +745,20 @@ gws docs documents create --json '{"title": "My Document"}'
 #### get — Get document content and metadata
 
 **Params:**
-| Param | Type | Required |
-|-------|------|----------|
-| `documentId` | string | YES |
+| Param | Type | Required | Description |
+|-------|------|----------|-------------|
+| `documentId` | string | YES | The document ID |
+| `includeTabsContent` | boolean | no | **Required for tab-based docs.** Without this, newly created docs return empty body. |
 
 ```bash
+# Basic get (may return empty body for new docs)
 gws docs documents get --params '{"documentId": "<DOCUMENT_ID>"}'
+
+# With tabs content (RECOMMENDED — always use this)
+gws docs documents get --params '{"documentId": "<DOCUMENT_ID>", "includeTabsContent": true}'
 ```
+
+> **IMPORTANT:** Newly created Google Docs use the tabs-based structure. The top-level `body` will be empty. Content lives in `tabs[0].documentTab.body`. Always pass `"includeTabsContent": true` to get the actual content.
 
 #### batchUpdate — Insert/delete text, apply formatting, insert tables
 
@@ -737,18 +770,31 @@ gws docs documents get --params '{"documentId": "<DOCUMENT_ID>"}'
 **Body:** `{"requests": [...]}`
 
 Common requests:
-- `insertText`: `{"location": {"index": 1}, "text": "Hello\n"}`
+- `insertText`: `{"location": {"index": 1, "tabId": "t.0"}, "text": "Hello\n"}`
 - `updateTextStyle`: bold, fontSize, foregroundColor, etc.
+- `updateParagraphStyle`: heading styles (TITLE, HEADING_1, etc.)
 - `insertTable`: insert a table at an index
 - `deleteContentRange`: remove text
 
+> **CRITICAL: `tabId` is required.** Newly created Google Docs use tabs. All `location` and `range` objects MUST include `"tabId": "t.0"` (the default tab). Without it, the API returns success but **content is NOT visible** in the document.
+
 ```bash
-# Insert text at the beginning of the doc
-gws docs documents batchUpdate --params '{"documentId": "<DOCUMENT_ID>"}' --json '{"requests": [{"insertText": {"location": {"index": 1}, "text": "Hello, World!\n"}}]}'
+# Insert text (with tabId — REQUIRED for new docs)
+gws docs documents batchUpdate --params '{"documentId": "<DOCUMENT_ID>"}' --json '{"requests": [{"insertText": {"location": {"index": 1, "tabId": "t.0"}, "text": "Hello, World!\n"}}]}'
+
+# Insert text with heading style
+gws docs documents batchUpdate --params '{"documentId": "<DOCUMENT_ID>"}' --json '{"requests": [{"insertText": {"location": {"index": 1, "tabId": "t.0"}, "text": "My Title\n"}}, {"updateParagraphStyle": {"range": {"startIndex": 1, "endIndex": 10, "tabId": "t.0"}, "paragraphStyle": {"namedStyleType": "TITLE"}, "fields": "namedStyleType"}}]}'
 
 # Insert text with bold formatting
-gws docs documents batchUpdate --params '{"documentId": "<DOCUMENT_ID>"}' --json '{"requests": [{"insertText": {"location": {"index": 1}, "text": "Bold Title\n"}}, {"updateTextStyle": {"range": {"startIndex": 1, "endIndex": 12}, "textStyle": {"bold": true, "fontSize": {"magnitude": 18, "unit": "PT"}}, "fields": "bold,fontSize"}}]}'
+gws docs documents batchUpdate --params '{"documentId": "<DOCUMENT_ID>"}' --json '{"requests": [{"insertText": {"location": {"index": 1, "tabId": "t.0"}, "text": "Bold Title\n"}}, {"updateTextStyle": {"range": {"startIndex": 1, "endIndex": 12, "tabId": "t.0"}, "textStyle": {"bold": true, "fontSize": {"magnitude": 18, "unit": "PT"}}, "fields": "bold,fontSize"}}]}'
+
+# Delete content (also needs tabId)
+gws docs documents batchUpdate --params '{"documentId": "<DOCUMENT_ID>"}' --json '{"requests": [{"deleteContentRange": {"range": {"startIndex": 1, "endIndex": 50, "tabId": "t.0"}}}]}'
 ```
+
+**Named paragraph styles:** `TITLE`, `SUBTITLE`, `HEADING_1` through `HEADING_6`, `NORMAL_TEXT`
+
+**Chunking:** When sending many requests (e.g., building a full document), batch into groups of 6-8 requests per API call to stay under Windows command line limits. Track the running `index` across chunks.
 
 ---
 

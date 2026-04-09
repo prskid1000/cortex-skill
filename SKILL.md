@@ -21,8 +21,8 @@ python ~/.claude/skills/claude-claw/scripts/healthcheck.py
 
 | Topic | File |
 |-------|------|
-| Google Workspace CLI | [references/gws-cli.md](references/gws-cli.md) |
-| Excel / Word / PowerPoint | [references/document-creation.md](references/document-creation.md) |
+| Google Workspace CLI (Drive / Sheets / Docs / Slides / Gmail / Calendar) | [references/gws-cli.md](references/gws-cli.md) |
+| Excel / Word / PowerPoint (openpyxl / python-docx / python-pptx) | [references/document-creation.md](references/document-creation.md) |
 | PDF tools | [references/pdf-tools.md](references/pdf-tools.md) |
 | Image / Video / Audio | [references/media-tools.md](references/media-tools.md) |
 | Document conversion | [references/conversion-tools.md](references/conversion-tools.md) |
@@ -36,7 +36,8 @@ python ~/.claude/skills/claude-claw/scripts/healthcheck.py
 
 | Task | File |
 |------|------|
-| Excel / Word / PPT | [examples/office-documents.md](examples/office-documents.md) |
+| Excel / Word / PPT (openpyxl / python-docx / python-pptx) | [examples/office-documents.md](examples/office-documents.md) |
+| Google Workspace (Docs / Sheets / Slides) | [examples/google-workspace.md](examples/google-workspace.md) |
 | PDF workflows | [examples/pdf-workflows.md](examples/pdf-workflows.md) |
 | Image processing | [examples/image-processing.md](examples/image-processing.md) |
 | Video / audio | [examples/video-audio.md](examples/video-audio.md) |
