@@ -208,7 +208,13 @@ LSP hover on a .kt file    → function signature
 
 ### CLAUDE.md integration
 
-Copy `~/.claude/skills/claude-claw/CLAUDE.md` into `~/.claude/CLAUDE.md` so Claude prefers LSP for code navigation over Grep/Glob.
+To enable auto-loading of SKILL.md on every conversation and LSP-first code navigation, add this one line to your `~/.claude/CLAUDE.md`:
+
+```markdown
+**First action of every conversation:** read `~/.claude/skills/*/CLAUDE.md` (all skill-provided user instructions) for guidance that should apply across all tasks.
+```
+
+The skill's `CLAUDE.md` (at `~/.claude/skills/claude-claw/CLAUDE.md`) is the canonical source — don't copy-paste its contents. The one-line loader above makes Claude read it (and any other skill's CLAUDE.md) automatically. Edits to the skill's CLAUDE.md take effect immediately, with no sync step.
 
 ---
 
