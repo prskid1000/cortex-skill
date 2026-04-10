@@ -90,25 +90,28 @@ function ctx(offset, before, after) {
 function discover() {
   const found = {};
 
-  // 1. CONTEXT WINDOW — find VAR=200000, where "return VAR}" exists nearby
-  //    Anchor: the context window function returns this var as default, with "return 1e6" for special cases
+  // 1. CONTEXT WINDOW — find VAR=<6 digits>, where "return VAR}" sits in a function with "return 1e6"
+  //    Value-agnostic: works for original (200000) and patched (e.g. 262000) states.
   {
-    const re = /([a-zA-Z_$][a-zA-Z0-9_$]*)=200000,/g;
-    let m, hits = [];
-    while ((m = re.exec(txt)) !== null) {
-      const varName = m[1];
-      // Verify: this var must be used as "return VAR}" somewhere (context window function)
-      const returnPat = `return ${varName}}`;
-      const returnIdx = txt.indexOf(returnPat);
-      if (returnIdx === -1) continue;
-      // Extra check: the function containing "return VAR}" should also have "return 1e6"
-      const funcCtx = txt.slice(Math.max(0, returnIdx - 500), returnIdx);
-      if (!funcCtx.includes("return 1e6")) continue;
-      hits.push({ varName, offset: m.index, pattern: `${varName}=200000,` });
+    const retRe = /return ([a-zA-Z_$][a-zA-Z0-9_$]*)\}/g;
+    const candidates = new Set();
+    let rm;
+    while ((rm = retRe.exec(txt)) !== null) {
+      const funcCtx = txt.slice(Math.max(0, rm.index - 500), rm.index);
+      if (funcCtx.includes("return 1e6")) candidates.add(rm[1]);
+    }
+    const hits = [];
+    for (const varName of candidates) {
+      const esc = varName.replace(/[$]/g, "\\$");
+      const re = new RegExp(`${esc}=(\\d{6}),`, "g");
+      let m;
+      while ((m = re.exec(txt)) !== null) {
+        hits.push({ varName, value: parseInt(m[1], 10), offset: m.index, pattern: `${varName}=${m[1]},` });
+      }
     }
     if (hits.length >= 2) {
-      found.contextWindow = { value: 200000, digits: 6, hits, default: 262000,
-        desc: "Context window default" };
+      found.contextWindow = { value: hits[0].value, digits: 6, hits, default: 262000,
+        original: 200000, desc: "Context window default" };
     }
   }
 
@@ -130,22 +133,21 @@ function discover() {
     }
   }
 
-  // 3. AUTOCOMPACT BUFFER — find VAR=13000, near =20000, and =3000, cluster
-  //    Anchor: the "autocompact-experiment-hint" string nearby
+  // 3. AUTOCOMPACT BUFFER — target var is always declared immediately after "=1e6,"
+  //    inside a cluster containing "=3000," and "autocompact". This is the stable
+  //    structural anchor across Claude Code versions (var names are minified & unstable).
   {
-    const re = /([a-zA-Z_$][a-zA-Z0-9_$]*)=(\d{4,5}),/g;
+    const re = /=1e6,([a-zA-Z_$][a-zA-Z0-9_$]*)=(\d{4,5}),/g;
     let m, hits = [];
     while ((m = re.exec(txt)) !== null) {
-      const val = parseInt(m[2], 10);
-      if (val < 5000 || val > 30000 || val === 20000 || val === 3000) continue;
-      const c = ctx(m.index, 200, 200);
-      if (c.includes("=20000,") && c.includes("=3000,") && c.includes("autocompact")) {
-        hits.push({ varName: m[1], value: val, offset: m.index, pattern: `${m[1]}=${m[2]},` });
-      }
+      const c = ctx(m.index, 300, 300);
+      if (!c.includes("=3000,") || !c.includes("autocompact")) continue;
+      const off = m.index + "=1e6,".length;
+      hits.push({ varName: m[1], value: parseInt(m[2], 10), offset: off, pattern: `${m[1]}=${m[2]},` });
     }
     if (hits.length >= 2) {
       found.autocompact = { value: hits[0].value, digits: String(hits[0].value).length,
-        hits, default: 20000, desc: "Autocompact buffer reserve" };
+        hits, default: 20000, original: 13000, desc: "Autocompact buffer reserve" };
     }
   }
 
@@ -160,7 +162,7 @@ function discover() {
     }
     if (hits.length >= 2) {
       found.summaryMax = { value: hits[0].value, digits: String(hits[0].value).length,
-        hits, default: 80000, desc: "Summary max tokens" };
+        hits, default: 80000, original: 40000, desc: "Summary max tokens" };
     }
   }
 
@@ -172,10 +174,19 @@ const d = discover();
 // ─── Scan mode ──────────────────────────────────────────────────────
 if (flag("scan")) {
   console.log("=== Discovered Constants ===\n");
+  const stateLabel = (info) => {
+    const v = info.value ?? info.hits[0]?.upperValue;
+    if (v == null) return "";
+    if (info.default != null && v === info.default) return " (patched — at default)";
+    if (info.original != null && v === info.original) return " (original — unpatched)";
+    if (info.original != null && v !== info.original) return " (patched — custom)";
+    return "";
+  };
   const show = (key, info) => {
     if (!info) { console.log(`${key}: NOT FOUND\n`); return; }
     console.log(`${info.desc}:`);
-    console.log(`  Current value: ${info.value ?? info.hits[0]?.upperValue ?? "?"}`);
+    const v = info.value ?? info.hits[0]?.upperValue ?? "?";
+    console.log(`  Current value: ${v}${stateLabel(info)}`);
     console.log(`  Occurrences:   ${info.hits.length}`);
     for (const h of info.hits) {
       console.log(`  @ offset ${h.offset}: ${h.pattern || h.full || ""}`);
