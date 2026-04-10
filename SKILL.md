@@ -162,91 +162,55 @@ subprocess.run([gws, "drive", "files", "list"], capture_output=True, text=True)
 
 ## Decision Tree
 
-```mermaid
-graph TD
-    START{What do you need?}
-
-    START --> CREATE["CREATE Document"]
-    START --> READ["READ / EXTRACT"]
-    START --> EDIT["EDIT Document"]
-    START --> CONVERT["CONVERT Format"]
-    START --> EMAIL["SEND Email"]
-    START --> IMAGE["PROCESS Image"]
-    START --> VIDEO["PROCESS Video/Audio"]
-    START --> GWS["GOOGLE WORKSPACE"]
-    START --> CLICKUP["MANAGE Tasks"]
-    START --> PIPELINE["DATA PIPELINE"]
-    START --> SETUP["SETUP / INSTALL"]
-
-    %% CREATE
-    CREATE --> XLSX["Excel .xlsx<br/>API: document-creation.md § openpyxl<br/>Ex: office-documents.md § Excel"]
-    CREATE --> DOCX["Word .docx<br/>API: document-creation.md § python-docx<br/>Ex: office-documents.md § Word"]
-    CREATE --> PPTX["PowerPoint .pptx<br/>API: document-creation.md § python-pptx<br/>Ex: office-documents.md § PowerPoint"]
-    CREATE --> PDF_C["PDF from scratch<br/>API: pdf-tools.md § reportlab<br/>Ex: pdf-workflows.md § reportlab"]
-    CREATE --> GDOC["Google Doc/Sheet/Slides<br/>API: gws-cli.md § Docs/Sheets/Slides<br/>Ex: google-workspace.md"]
-
-    %% READ / EXTRACT
-    READ --> PDF_TXT["PDF → text<br/>pdf-tools.md § PyMuPDF"]
-    READ --> PDF_TBL["PDF → tables<br/>pdf-tools.md § pdfplumber"]
-    READ --> PDF_IMG["PDF → images<br/>pdf-tools.md § PyMuPDF"]
-    READ --> XLS_R["Excel → data<br/>document-creation.md § Cell Ops"]
-    READ --> HTML_R["HTML/XML → data<br/>web-parsing.md § lxml / BS4"]
-
-    %% EDIT
-    EDIT --> PDF_E["PDF annotate/redact<br/>pdf-tools.md § PyMuPDF"]
-    EDIT --> PDF_M["PDF merge/split<br/>pdf-tools.md § PyPDF2"]
-    EDIT --> OFFICE_E["Excel/Word/PPT<br/>Same libs as CREATE"]
-
-    %% CONVERT
-    CONVERT --> PANDOC["Any ↔ Any<br/>API: conversion-tools.md § Syntax<br/>Ex: document-conversion.md § Basic"]
-    CONVERT --> STYLED["TOC / Bib / Style<br/>conversion-tools.md § Templates<br/>Ex: document-conversion.md § Styling"]
-    CONVERT --> NOLTX["PDF without LaTeX<br/>document-conversion.md § PyMuPDF"]
-
-    %% EMAIL
-    EMAIL --> MIME["Build MIME<br/>API: email-reference.md § Python MIME<br/>Ex: email-workflows.md § MIME"]
-    EMAIL --> GMAIL_S["Send Gmail<br/>email-reference.md § Gmail CLI<br/>Full API: gws-cli.md § Gmail"]
-    EMAIL --> REPLY["Reply / Forward<br/>email-reference.md § Gmail CLI"]
-
-    %% IMAGE
-    IMAGE --> PIL["Pillow Python<br/>API: media-tools.md § Image/Draw/Filter/Enhance<br/>Ex: image-processing.md § Pillow"]
-    IMAGE --> MAGICK["ImageMagick CLI<br/>API: media-tools.md § ImageMagick<br/>Ex: image-processing.md § ImageMagick"]
-
-    %% VIDEO
-    VIDEO --> FFCONV["Convert/Trim/Merge<br/>API: media-tools.md § FFmpeg<br/>Ex: video-audio.md § Conversion"]
-    VIDEO --> FFEXT["Extract audio/frames<br/>video-audio.md § Extraction"]
-    VIDEO --> FFGIF["GIF / Thumbnails<br/>video-audio.md § GIF / Thumbnails"]
-    VIDEO --> FFFX["Effects / Speed<br/>video-audio.md § Overlays / Speed"]
-    VIDEO --> FFAUD["Audio only<br/>video-audio.md § Audio"]
-
-    %% GOOGLE WORKSPACE
-    GWS --> DRIVE["Drive<br/>gws-cli.md § Drive"]
-    GWS --> SHEETS["Sheets<br/>gws-cli.md § Sheets"]
-    GWS --> DOCS["Docs<br/>gws-cli.md § Docs"]
-    GWS --> SLIDES["Slides<br/>gws-cli.md § Slides"]
-    GWS --> GMAIL["Gmail<br/>gws-cli.md § Gmail"]
-    GWS --> CAL["Calendar<br/>gws-cli.md § Calendar"]
-    GWS --> TASKS["Tasks<br/>gws-cli.md § Tasks"]
-    GWS --> AUTH["Auth<br/>gws-cli.md § Auth"]
-    GWS --> HELPERS["+send/+triage/+reply<br/>gws-cli.md § Helpers"]
-
-    %% CLICKUP
-    CLICKUP --> CU_CRUD["CRUD<br/>API: clickup-cli.md § Tasks<br/>Ex: clickup-workflows.md"]
-    CLICKUP --> CU_SPRINT["Sprint/Status<br/>clickup-cli.md § Sprint/Status"]
-    CLICKUP --> CU_COMM["Comments/Time<br/>clickup-cli.md § Comments/Time"]
-    CLICKUP --> CU_GIT["Git<br/>clickup-cli.md § Git"]
-
-    %% PIPELINE
-    PIPELINE --> P_CSV["CSV→Excel→Sheets<br/>data-pipelines.md § CSV"]
-    PIPELINE --> P_PDF["PDF→Tables→Excel<br/>data-pipelines.md § PDF"]
-    PIPELINE --> P_SYNC["Sheets↔Local<br/>data-pipelines.md § Sheets"]
-    PIPELINE --> P_FULL["DB→Report→Email<br/>data-pipelines.md § Full Pipeline"]
-
-    %% SETUP
-    SETUP --> S_PIP["Python pkgs → setup.md § 1"]
-    SETUP --> S_CLI["CLI tools → setup.md § 2"]
-    SETUP --> S_GWS["GWS auth → setup.md § 3"]
-    SETUP --> S_MCP["MCP/MySQL → setup.md § 4"]
-    SETUP --> S_LSP["LSP plugins → setup.md § 5"]
-    SETUP --> S_HC["Healthcheck → healthcheck.py"]
-    SETUP --> S_PATCH["Patch Claude → claude-patcher.md"]
-```
+- **CREATE a document**
+  - Excel → [document-creation.md § openpyxl](references/document-creation.md#11-workbook--worksheet-operations) · [Ex](examples/office-documents.md#excel-openpyxl)
+  - Word → [document-creation.md § python-docx](references/document-creation.md#21-document-operations) · [Ex](examples/office-documents.md#word-python-docx)
+  - PowerPoint → [document-creation.md § python-pptx](references/document-creation.md#31-presentation-operations) · [Ex](examples/office-documents.md#powerpoint-python-pptx)
+  - PDF → [pdf-tools.md § reportlab](references/pdf-tools.md#4-reportlab----pdf-generation) · [Ex](examples/pdf-workflows.md#reportlab--generate-pdfs-from-scratch)
+  - Google Doc/Sheet/Slides → [gws-cli.md § Docs](references/gws-cli.md#docs) · [Sheets](references/gws-cli.md#sheets) · [Slides](references/gws-cli.md#slides) · [Ex](examples/google-workspace.md#google-docs-gws-cli)
+- **READ / EXTRACT**
+  - PDF → text → [pdf-tools.md § PyMuPDF](references/pdf-tools.md#1-pymupdf-fitz----pdf-read--edit--render) · [Ex](examples/pdf-workflows.md#pymupdf-fitz--readeditmanipulate)
+  - PDF → tables → [pdf-tools.md § pdfplumber](references/pdf-tools.md#3-pdfplumber----pdf-data-extraction) · [Ex](examples/pdf-workflows.md#pdfplumber----extract-data)
+  - PDF → images → [pdf-tools.md § PyMuPDF](references/pdf-tools.md#1-pymupdf-fitz----pdf-read--edit--render)
+  - Excel → data → [document-creation.md § Cells](references/document-creation.md#12-cell-operations)
+  - HTML/XML → [web-parsing.md § lxml](references/web-parsing.md#lxml) · [BS4](references/web-parsing.md#beautifulsoup4)
+- **EDIT a document**
+  - PDF annotate/redact → [pdf-tools.md § PyMuPDF](references/pdf-tools.md#1-pymupdf-fitz----pdf-read--edit--render)
+  - PDF merge/split → [pdf-tools.md § PyPDF2](references/pdf-tools.md#2-pypdf2----pdf-merge--split--transform)
+  - Excel/Word/PPT → same libs as CREATE
+- **CONVERT format**
+  - Any ↔ Any → [conversion-tools.md § Syntax](references/conversion-tools.md#command-syntax) · [Ex](examples/document-conversion.md#basic-conversions)
+  - TOC/bibliography/styling → [conversion-tools.md § Templates](references/conversion-tools.md#templates) · [TOC](references/conversion-tools.md#table-of-contents) · [Bib](references/conversion-tools.md#bibliography--citations) · [Ex](examples/document-conversion.md#custom-styling)
+  - PDF without LaTeX → [Ex § PyMuPDF](examples/document-conversion.md#pymupdf-as-pdf-alternative-no-latex-required)
+- **SEND / COMPOSE email**
+  - Build MIME → [email-reference.md § Python MIME](references/email-reference.md#python-mime-emailmime) · [Ex](examples/email-workflows.md#python-email-composition-mime)
+  - Send Gmail → [email-reference.md § Gmail CLI](references/email-reference.md#gmail-cli-gws-gmail) · [Full API](references/gws-cli.md#gmail) · [Ex](examples/email-workflows.md#gmail-via-gws-cli)
+  - Reply/forward → [email-reference.md § Gmail CLI](references/email-reference.md#gmail-cli-gws-gmail) (`+reply`, `+forward`)
+- **PROCESS images**
+  - Pillow → [media-tools.md § Image](references/media-tools.md#13-image-class----all-methods-and-properties) · [Draw](references/media-tools.md#14-imagedraw) · [Filter](references/media-tools.md#16-imagefilter) · [Enhance](references/media-tools.md#17-imageenhance) · [Ops](references/media-tools.md#18-imageops) · [Ex](examples/image-processing.md#pillow-python)
+  - ImageMagick → [media-tools.md § ImageMagick](references/media-tools.md#21-identify) · [Ex](examples/image-processing.md#imagemagick-magick-cli)
+- **PROCESS video / audio**
+  - Convert/trim/merge → [media-tools.md § FFmpeg](references/media-tools.md#31-basic-conversion) · [Ex](examples/video-audio.md#video-conversion)
+  - Extract → [Ex § Extraction](examples/video-audio.md#extraction--trimming)
+  - GIF/thumbnails → [Ex § GIF](examples/video-audio.md#gif--animated-formats) · [Thumbnails](examples/video-audio.md#thumbnails--frames)
+  - Effects/speed → [Ex § Overlays](examples/video-audio.md#overlays--effects) · [Speed](examples/video-audio.md#speed--direction)
+  - Audio → [Ex § Audio](examples/video-audio.md#audio-operations)
+- **GOOGLE WORKSPACE**
+  - [Drive](references/gws-cli.md#drive) · [Sheets](references/gws-cli.md#sheets) · [Docs](references/gws-cli.md#docs) · [Slides](references/gws-cli.md#slides) · [Gmail](references/gws-cli.md#gmail) · [Calendar](references/gws-cli.md#calendar) · [Tasks](references/gws-cli.md#tasks)
+  - [Auth](references/gws-cli.md#auth) · [+helpers](references/gws-cli.md#ergonomic-helper-commands) · [Critical Rules](references/gws-cli.md#critical-rules-read-first--violations-cause-errors)
+- **MANAGE tasks (ClickUp)**
+  - CRUD → [clickup-cli.md § Tasks](references/clickup-cli.md#task-management) · [Ex](examples/clickup-workflows.md#read-a-task)
+  - Sprint/status → [clickup-cli.md § Sprint](references/clickup-cli.md#sprint-management) · [Status](references/clickup-cli.md#status-management)
+  - Comments/time → [clickup-cli.md § Comments](references/clickup-cli.md#comments) · [Time](references/clickup-cli.md#time-tracking)
+  - Git → [clickup-cli.md § Git](references/clickup-cli.md#git-integration) · [Ex](examples/clickup-workflows.md#git-integration)
+- **DATA PIPELINE**
+  - CSV → Excel → Sheets → [Ex](examples/data-pipelines.md#csv-to-styled-excel-to-google-sheets)
+  - PDF → tables → Excel → [Ex](examples/data-pipelines.md#pdf-to-extract-tables-to-excel)
+  - Sheets ↔ local → [Ex](examples/data-pipelines.md#google-sheet-download-modify-upload-back)
+  - DB → report → email → [Ex](examples/data-pipelines.md#full-pipeline-db-query-to-process-to-excel--pdf-to-upload-drive-to-email)
+- **QUERY database**
+  - MySQL MCP → [setup.md § MCP](references/setup.md#4-mcp-servers)
+- **SETUP / INSTALL**
+  - [Python pkgs](references/setup.md#1-python-packages) · [CLI tools](references/setup.md#2-cli-tools) · [GWS auth](references/setup.md#3-google-workspace-gws-auth) · [MCP](references/setup.md#4-mcp-servers) · [LSP](references/setup.md#5-lsp-plugins) · [healthcheck.py](scripts/healthcheck.py)
+- **PATCH Claude Code**
+  - [claude-patcher.md § Usage](references/claude-patcher.md#usage)
