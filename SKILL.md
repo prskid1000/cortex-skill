@@ -21,12 +21,21 @@ python ~/.claude/skills/claude-claw/scripts/healthcheck.py
 
 ## Windows Notes
 
-On Windows, `gws`/`clickup` are `.cmd` shims. Use `shutil.which()`:
+On Windows, npm/scoop/winget-installed CLIs are `.cmd`/`.bat` shims that `subprocess.run(["tool", ...])` cannot find directly. Always resolve the full path with `shutil.which()` first:
 
 ```python
 import shutil, subprocess
-gws = shutil.which("gws")
-subprocess.run([gws, "drive", "files", "list"], capture_output=True, text=True)
+
+def run(tool: str, *args: str, **kwargs):
+    """Run any CLI tool, resolving Windows .cmd shims via PATH."""
+    bin_path = shutil.which(tool)
+    if not bin_path:
+        raise FileNotFoundError(f"{tool} not in PATH")
+    return subprocess.run([bin_path, *args], capture_output=True, text=True, **kwargs)
+
+# Works for gws, clickup, npx, pandoc, magick, ffmpeg, etc.
+run("gws", "drive", "files", "list")
+run("clickup", "task", "view", "ABC-123")
 ```
 
 ## File Map
