@@ -160,14 +160,137 @@ subprocess.run([gws, "drive", "files", "list"], capture_output=True, text=True)
 | [scripts/healthcheck.py](scripts/healthcheck.py) | Verify packages, CLI tools, MCP servers, LSP plugins; auto-fix Windows patches |
 | [scripts/claude-patcher.js](scripts/claude-patcher.js) | Claude Code binary patcher (context window, output limits) |
 
-## Quick Decision Tree
+## Decision Tree
 
-- **CREATE a document?** → [document-creation.md](references/document-creation.md) / [pdf-tools.md](references/pdf-tools.md)
-- **CONVERT formats?** → [conversion-tools.md](references/conversion-tools.md)
-- **SEND email?** → [email-reference.md](references/email-reference.md)
-- **Google Drive/Sheets/Docs?** → [gws-cli.md](references/gws-cli.md)
-- **PROCESS images?** → [media-tools.md](references/media-tools.md#11-supported-formats)
-- **PROCESS video/audio?** → [media-tools.md](references/media-tools.md#31-basic-conversion)
-- **PARSE HTML/XML?** → [web-parsing.md](references/web-parsing.md)
-- **MANAGE tasks?** → [clickup-cli.md](references/clickup-cli.md)
-- **Working code?** → `examples/` (matching topic)
+What do you need to do?
+
+- **CREATE a document**
+  - Excel (.xlsx)
+    - API → [document-creation.md § openpyxl](references/document-creation.md#11-workbook--worksheet-operations)
+    - Examples → [office-documents.md § Excel](examples/office-documents.md#excel-openpyxl)
+  - Word (.docx)
+    - API → [document-creation.md § python-docx](references/document-creation.md#21-document-operations)
+    - Examples → [office-documents.md § Word](examples/office-documents.md#word-python-docx)
+  - PowerPoint (.pptx)
+    - API → [document-creation.md § python-pptx](references/document-creation.md#31-presentation-operations)
+    - Examples → [office-documents.md § PowerPoint](examples/office-documents.md#powerpoint-python-pptx)
+  - PDF from scratch
+    - API → [pdf-tools.md § reportlab](references/pdf-tools.md#4-reportlab----pdf-generation)
+    - Examples → [pdf-workflows.md § reportlab](examples/pdf-workflows.md#reportlab--generate-pdfs-from-scratch)
+  - Google Doc / Sheet / Slides
+    - API → [gws-cli.md § Docs](references/gws-cli.md#docs) · [Sheets](references/gws-cli.md#sheets) · [Slides](references/gws-cli.md#slides)
+    - Examples → [google-workspace.md](examples/google-workspace.md#google-docs-gws-cli)
+- **READ / EXTRACT from a document**
+  - PDF → text
+    - [pdf-tools.md § PyMuPDF text extraction](references/pdf-tools.md#1-pymupdf-fitz----pdf-read--edit--render)
+    - [pdf-workflows.md § PyMuPDF](examples/pdf-workflows.md#pymupdf-fitz--readeditmanipulate)
+  - PDF → tables
+    - [pdf-tools.md § pdfplumber](references/pdf-tools.md#3-pdfplumber----pdf-data-extraction)
+    - [pdf-workflows.md § pdfplumber](examples/pdf-workflows.md#pdfplumber----extract-data)
+  - PDF → images
+    - [pdf-tools.md § PyMuPDF](references/pdf-tools.md#1-pymupdf-fitz----pdf-read--edit--render)
+  - Excel → data
+    - [document-creation.md § Cell Operations](references/document-creation.md#12-cell-operations)
+  - HTML / XML → data
+    - [web-parsing.md § lxml](references/web-parsing.md#lxml) (XPath, XSLT)
+    - [web-parsing.md § BeautifulSoup4](references/web-parsing.md#beautifulsoup4) (CSS selectors)
+- **EDIT an existing document**
+  - PDF (annotate, redact, merge, split)
+    - API → [pdf-tools.md § PyMuPDF](references/pdf-tools.md#1-pymupdf-fitz----pdf-read--edit--render)
+    - Merge/split → [pdf-tools.md § PyPDF2](references/pdf-tools.md#2-pypdf2----pdf-merge--split--transform)
+  - Excel / Word / PPT
+    - Same as CREATE sections above (libraries support read + modify + save)
+- **CONVERT between formats**
+  - Any → Any (Markdown, Word, PDF, HTML, EPUB, Slides, LaTeX...)
+    - API → [conversion-tools.md](references/conversion-tools.md#command-syntax)
+    - Examples → [document-conversion.md § Basic](examples/document-conversion.md#basic-conversions)
+  - With TOC / bibliography / custom styling
+    - [conversion-tools.md § TOC](references/conversion-tools.md#table-of-contents) · [Bibliography](references/conversion-tools.md#bibliography--citations) · [Templates](references/conversion-tools.md#templates)
+    - [document-conversion.md § Styling](examples/document-conversion.md#custom-styling) · [Bibliography](examples/document-conversion.md#bibliography-and-citations)
+  - PDF without LaTeX
+    - [document-conversion.md § PyMuPDF alternative](examples/document-conversion.md#pymupdf-as-pdf-alternative-no-latex-required)
+- **SEND / COMPOSE email**
+  - Build MIME message (plain, HTML, attachments, inline images)
+    - API → [email-reference.md § Python MIME](references/email-reference.md#python-mime-emailmime)
+    - Examples → [email-workflows.md § MIME](examples/email-workflows.md#python-email-composition-mime)
+  - Send via Gmail
+    - Helpers → [email-reference.md § Gmail CLI](references/email-reference.md#gmail-cli-gws-gmail)
+    - Full API → [gws-cli.md § Gmail](references/gws-cli.md#gmail)
+    - Examples → [email-workflows.md § Gmail](examples/email-workflows.md#gmail-via-gws-cli)
+  - Reply / forward (threading)
+    - [email-reference.md § Python MIME](references/email-reference.md#python-mime-emailmime) (In-Reply-To headers)
+    - [email-reference.md § Gmail CLI](references/email-reference.md#gmail-cli-gws-gmail) (`+reply`, `+forward`)
+- **PROCESS images**
+  - Python (Pillow)
+    - API → [media-tools.md § Image Class](references/media-tools.md#13-image-class----all-methods-and-properties)
+    - Draw/text → [media-tools.md § ImageDraw](references/media-tools.md#14-imagedraw)
+    - Filters → [media-tools.md § ImageFilter](references/media-tools.md#16-imagefilter)
+    - Enhance → [media-tools.md § ImageEnhance](references/media-tools.md#17-imageenhance)
+    - Ops → [media-tools.md § ImageOps](references/media-tools.md#18-imageops)
+    - Examples → [image-processing.md § Pillow](examples/image-processing.md#pillow-python)
+  - CLI (ImageMagick)
+    - API → [media-tools.md § ImageMagick](references/media-tools.md#21-identify)
+    - Examples → [image-processing.md § ImageMagick](examples/image-processing.md#imagemagick-magick-cli)
+- **PROCESS video / audio**
+  - Convert / trim / merge / compress
+    - API → [media-tools.md § FFmpeg](references/media-tools.md#31-basic-conversion)
+    - Examples → [video-audio.md § Conversion](examples/video-audio.md#video-conversion)
+  - Extract audio / frames
+    - [video-audio.md § Extraction](examples/video-audio.md#extraction--trimming)
+  - GIF / thumbnails
+    - [video-audio.md § GIF](examples/video-audio.md#gif--animated-formats) · [Thumbnails](examples/video-audio.md#thumbnails--frames)
+  - Effects / overlays / speed
+    - [video-audio.md § Overlays](examples/video-audio.md#overlays--effects) · [Speed](examples/video-audio.md#speed--direction)
+  - Audio only
+    - [video-audio.md § Audio](examples/video-audio.md#audio-operations)
+- **USE Google Workspace**
+  - Drive (upload, download, share)
+    - [gws-cli.md § Drive](references/gws-cli.md#drive)
+  - Sheets (read, write, append)
+    - [gws-cli.md § Sheets](references/gws-cli.md#sheets)
+  - Docs (create, update)
+    - [gws-cli.md § Docs](references/gws-cli.md#docs)
+  - Slides
+    - [gws-cli.md § Slides](references/gws-cli.md#slides)
+  - Gmail
+    - [gws-cli.md § Gmail](references/gws-cli.md#gmail)
+  - Calendar
+    - [gws-cli.md § Calendar](references/gws-cli.md#calendar)
+  - Tasks
+    - [gws-cli.md § Tasks](references/gws-cli.md#tasks)
+  - Auth / setup
+    - [gws-cli.md § Auth](references/gws-cli.md#auth) · [setup.md § GWS](references/setup.md#3-google-workspace-gws-auth)
+  - Helper shortcuts (+send, +triage)
+    - [gws-cli.md § Helpers](references/gws-cli.md#ergonomic-helper-commands)
+- **MANAGE tasks (ClickUp)**
+  - View / search / create / update
+    - API → [clickup-cli.md § Tasks](references/clickup-cli.md#task-management)
+    - Examples → [clickup-workflows.md § CRUD](examples/clickup-workflows.md#read-a-task)
+  - Sprint / status
+    - [clickup-cli.md § Sprint](references/clickup-cli.md#sprint-management) · [Status](references/clickup-cli.md#status-management)
+  - Comments / time tracking
+    - [clickup-cli.md § Comments](references/clickup-cli.md#comments) · [Time](references/clickup-cli.md#time-tracking)
+  - Git integration
+    - [clickup-cli.md § Git](references/clickup-cli.md#git-integration)
+    - [clickup-workflows.md § Git](examples/clickup-workflows.md#git-integration)
+- **BUILD a data pipeline**
+  - CSV → Excel → Google Sheets
+    - [data-pipelines.md § CSV](examples/data-pipelines.md#csv-to-styled-excel-to-google-sheets)
+  - PDF → tables → Excel
+    - [data-pipelines.md § PDF](examples/data-pipelines.md#pdf-to-extract-tables-to-excel)
+  - DB → report → upload → email
+    - [data-pipelines.md § Full Pipeline](examples/data-pipelines.md#full-pipeline-db-query-to-process-to-excel--pdf-to-upload-drive-to-email)
+  - Google Sheets ↔ local
+    - [data-pipelines.md § Sheets](examples/data-pipelines.md#google-sheet-download-modify-upload-back)
+- **QUERY a database**
+  - MySQL via MCP
+    - [setup.md § MCP Servers](references/setup.md#4-mcp-servers)
+- **SETUP / INSTALL**
+  - Python packages → [setup.md § 1](references/setup.md#1-python-packages)
+  - CLI tools → [setup.md § 2](references/setup.md#2-cli-tools)
+  - GWS auth → [setup.md § 3](references/setup.md#3-google-workspace-gws-auth)
+  - MCP servers → [setup.md § 4](references/setup.md#4-mcp-servers)
+  - LSP plugins → [setup.md § 5](references/setup.md#5-lsp-plugins)
+  - Run healthcheck → [scripts/healthcheck.py](scripts/healthcheck.py)
+- **PATCH Claude Code binary**
+  - [claude-patcher.md § Usage](references/claude-patcher.md#usage)
