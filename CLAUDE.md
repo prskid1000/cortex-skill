@@ -1,17 +1,11 @@
 # Claude Claw — User Instructions
 
-> Loaded automatically by `~/.claude/CLAUDE.md` via a direct path reference — do not copy-paste this file's contents.
+> Loaded automatically by `~/.claude/CLAUDE.md` via a direct `Read` call — do not copy-paste this file's contents.
 
-- [Auto-Load Skill](#auto-load-skill) · [LSP-First Navigation](#lsp-first-navigation)
+## Working With the Skill
 
-## Auto-Load Skill
-
-- **First action of every conversation:** read `~/.claude/skills/claude-claw/SKILL.md`
-  - Unconditional — read on every message regardless of topic, even simple greetings
-  - SKILL.md is small (File Map index only) — fast to load
-  - Gives you the index needed to find detailed references and examples
-- **After loading SKILL.md:**
-  - Follow direct links inside it to load only specific sections
+- **After SKILL.md is loaded** (via the parent `Skill(claude-claw)` call):
+  - Follow direct links inside SKILL.md to load only specific sections
   - Never read whole reference files (some are 60KB+)
   - Match the user's task to a category in the File Map, then jump to the linked section
 

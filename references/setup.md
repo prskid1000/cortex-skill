@@ -208,13 +208,24 @@ LSP hover on a .kt file    → function signature
 
 ### CLAUDE.md integration
 
-To enable auto-loading of SKILL.md on every conversation and LSP-first code navigation, add this one line to your `~/.claude/CLAUDE.md`:
+To enable auto-loading of the File Map and LSP-first code navigation on every conversation, add this block to your `~/.claude/CLAUDE.md`:
 
 ```markdown
-**First action of every conversation:** read `~/.claude/skills/claude-claw/CLAUDE.md` for user-level instructions (auto-load SKILL.md, LSP-first code navigation).
+**Before responding to ANY user request, ensure the claude-claw skill and its instructions are loaded into this conversation.**
+
+Check your context for both of the following:
+
+1. **`SKILL.md` content from the claude-claw skill** — if not visible in your context, load it by invoking: `Skill(skill: "claude-claw")`.
+2. **`~/.claude/skills/claude-claw/CLAUDE.md` content** — if not visible in your context, load it by calling: `Read(file_path: "~/.claude/skills/claude-claw/CLAUDE.md")`.
+
+Both must be loaded. If either is missing, load it FIRST before doing anything else — even for simple greetings. Invoking the skill does NOT automatically load the skill's `CLAUDE.md`; that is a separate file requiring a separate `Read` call.
+
+Once both are loaded, they stay in context for the rest of the session — you do not need to reload them.
 ```
 
-The skill's `CLAUDE.md` (at `~/.claude/skills/claude-claw/CLAUDE.md`) is the canonical source — don't copy-paste its contents. The one-line loader above makes Claude read it automatically, and edits take effect immediately with no sync step.
+**Why both steps:** the `Skill` call loads `SKILL.md` (the File Map index) into context as a single message. The `Read` call loads this directory's `CLAUDE.md`, which contains the LSP-First Navigation rules and other usage instructions. These are **two separate files** — per the [Claude Code skills docs](https://code.claude.com/docs/en/skills), invoking a skill only loads its `SKILL.md`; the skill directory's `CLAUDE.md` is NOT auto-loaded by the Skill tool. Skipping either one means missing guidance.
+
+**Idempotent check pattern:** the "check your context" framing ensures loads happen at most once per session. Once both files are in context after the first check, subsequent turns skip the load step because the content is already visible.
 
 ---
 

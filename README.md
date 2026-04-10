@@ -27,9 +27,24 @@ The healthcheck verifies all dependencies and auto-fixes Windows LSP issues.
 
 The skill auto-loads when Claude detects a relevant task (creating a document, sending email, working with Google Workspace, etc.). To force-activate, mention `claude-claw` in your prompt or invoke `/claude-claw`.
 
-## Optional: LSP-First Code Navigation
+## Optional: LSP-First Code Navigation + Auto-Load
 
-To make Claude prefer the LSP tool for code navigation in supported languages, copy [CLAUDE.md](CLAUDE.md) into your global `~/.claude/CLAUDE.md`.
+To enable LSP-first code navigation AND auto-load of the File Map on every conversation, add this block to your global `~/.claude/CLAUDE.md`:
+
+```markdown
+**Before responding to ANY user request, ensure the claude-claw skill and its instructions are loaded into this conversation.**
+
+Check your context for both of the following:
+
+1. **`SKILL.md` content from the claude-claw skill** — if not visible in your context, load it by invoking: `Skill(skill: "claude-claw")`.
+2. **`~/.claude/skills/claude-claw/CLAUDE.md` content** — if not visible in your context, load it by calling: `Read(file_path: "~/.claude/skills/claude-claw/CLAUDE.md")`.
+
+Both must be loaded. If either is missing, load it FIRST before doing anything else — even for simple greetings. Invoking the skill does NOT automatically load the skill's `CLAUDE.md`; that is a separate file requiring a separate `Read` call.
+
+Once both are loaded, they stay in context for the rest of the session — you do not need to reload them.
+```
+
+The `Skill` step loads [SKILL.md](SKILL.md) (the File Map); the `Read` step loads this directory's [CLAUDE.md](CLAUDE.md) (LSP-First Navigation rules). Both files contain distinct content — invoking the skill does NOT auto-load its `CLAUDE.md`. See [references/setup.md](references/setup.md#claudemd-integration) for details.
 
 ## Structure
 
