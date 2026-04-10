@@ -221,6 +221,115 @@ gws --account work drive files list
 
 ---
 
+## LSP Plugins (Claude Code)
+
+Claude Code official LSP plugins provide code intelligence (go-to-definition, hover, references) for the LSP tool. Install via the Claude Code plugin marketplace (`/plugin`).
+
+| Plugin | Language Server | Install server | File types |
+|--------|----------------|---------------|------------|
+| `pyright-lsp` | `pyright-langserver` | `npm install -g pyright` | `.py`, `.pyi` |
+| `typescript-lsp` | `typescript-language-server` | `npm install -g typescript-language-server typescript` | `.ts`, `.tsx`, `.js`, `.jsx`, `.mts`, `.cts`, `.mjs`, `.cjs` |
+| `jdtls-lsp` | `jdtls` | See [install instructions below](#jdtls-install) | `.java` |
+| `kotlin-lsp` | `kotlin-lsp` (JetBrains) | See [install instructions below](#kotlin-lsp-install) | `.kt`, `.kts` |
+
+### jdtls install
+
+Requires Java 17+ (JDK). Tested with Corretto 21.
+
+```bash
+# Download and extract
+mkdir -p ~/.local/jdtls
+curl -L "https://download.eclipse.org/jdtls/milestones/1.57.0/jdt-language-server-1.57.0-202602261110.tar.gz" \
+  | tar xz -C ~/.local/jdtls
+
+# Create launcher (Windows)
+cat > ~/.local/bin/jdtls.bat << 'BATCH'
+@echo off
+set JAVA_HOME=C:\Users\prith\.jdks\corretto-21.0.9
+set JDTLS_HOME=%USERPROFILE%\.local\jdtls
+"%JAVA_HOME%\bin\java.exe" ^
+  --add-modules=ALL-SYSTEM ^
+  --add-opens java.base/java.util=ALL-UNNAMED ^
+  --add-opens java.base/java.lang=ALL-UNNAMED ^
+  -Declipse.application=org.eclipse.jdt.ls.core.id1 ^
+  -Dosgi.bundles.defaultStartLevel=4 ^
+  -Declipse.product=org.eclipse.jdt.ls.core.product ^
+  -Xmx1G ^
+  -jar "%JDTLS_HOME%\plugins\org.eclipse.equinox.launcher_*.jar" ^
+  -configuration "%JDTLS_HOME%\config_win" ^
+  -data "%APPDATA%\jdtls-data" ^
+  %*
+BATCH
+```
+
+### kotlin-lsp install
+
+Uses [JetBrains/kotlin-lsp](https://github.com/Kotlin/kotlin-lsp) (official). Ships with its own JRE — no Java dependency needed. Much faster startup than fwcd/kotlin-language-server.
+
+```bash
+# Download and extract (Windows x64)
+mkdir -p ~/.local/kls-jetbrains
+curl -L "https://download-cdn.jetbrains.com/kotlin-lsp/262.2310.0/kotlin-lsp-262.2310.0-win-x64.zip" \
+  -o /tmp/kotlin-lsp.zip
+unzip /tmp/kotlin-lsp.zip -d ~/.local/kls-jetbrains/
+```
+
+The extracted directory contains `kotlin-lsp.cmd` — a native Windows launcher that the healthcheck patches into marketplace.json directly. No wrapper `.bat` needed.
+
+### Windows `uv_spawn` fix
+
+On Windows, npm-installed language servers are `.cmd`/shell shims, not native `.exe` files. Claude Code's LSP launcher uses Node.js `uv_spawn` without `shell: true`, which cannot execute shims — only Pyright happens to work out of the box.
+
+**Fix:** Patch the marketplace.json to bypass shims:
+
+```
+~/.claude/plugins/marketplaces/claude-plugins-official/.claude-plugin/marketplace.json
+```
+
+**Node-based servers** (typescript, pyright) — point command at `node.exe` + JS entry:
+
+```json
+"command": "C:\\nvm4w\\nodejs\\node.exe",
+"args": [
+  "C:\\nvm4w\\nodejs\\node_modules\\typescript-language-server\\lib\\cli.mjs",
+  "--stdio"
+],
+```
+
+Adjust paths to match your install (`node -e "console.log(process.execPath)"` and `npm root -g`).
+
+**Java-based servers** (jdtls, kotlin) — use `cmd.exe` to run `.bat` launcher:
+
+```json
+"command": "cmd.exe",
+"args": ["/d", "/s", "/c", "C:\\Users\\prith\\.local\\bin\\jdtls.bat"],
+```
+
+> **Note:** This patch is overwritten when the marketplace auto-updates. The healthcheck (`scripts/healthcheck.py`) auto-applies it on every run.
+
+### Known limitations
+
+| Server | Issue | Workaround |
+|--------|-------|------------|
+| **Java (jdtls)** | Indexes all `.java` files under workspace root. Shows "non-project file" warnings for files outside a Maven/Gradle project. | Launch from the project root, or ignore warnings |
+| **All (Windows)** | Marketplace auto-updates overwrite the `uv_spawn` patch | Run healthcheck after updates: `python ~/.claude/skills/claude-claw/scripts/healthcheck.py` |
+
+### Verify
+
+```bash
+# In Claude Code, test with the LSP tool:
+# Python
+LSP hover C:/Users/prith/test.py line 1 char 5
+# TypeScript
+LSP hover C:/Users/prith/test.ts line 1 char 10
+# Java (from a project directory)
+LSP hover src/main/java/MyClass.java line 5 char 20
+# Kotlin (from a project directory)
+LSP hover src/main/kotlin/Main.kt line 1 char 5
+```
+
+---
+
 ## Troubleshooting
 
 | Problem | Symptoms | Fix |
@@ -244,6 +353,9 @@ gws --account work drive files list
 | code-review-graph not found | `command not found` | `pip install code-review-graph` (requires Python 3.10+) |
 | code-review-graph MCP not connecting | Tool calls fail | Check `~/.claude.json` has the entry; restart Claude Code |
 | code-review-graph empty graph | No results from tools | Run `code-review-graph build` in the project directory first |
+| LSP ENOENT on Windows | `uv_spawn 'typescript-language-server'` | Shim can't be spawned without shell. Run healthcheck to auto-patch marketplace.json, then restart Claude Code |
+| LSP URI error on `/tmp/` | `path cannot begin with two slash characters` | Use a Windows-native path (e.g. `C:/Users/...`) instead of `/tmp/` |
+| LSP not loading after patch | Still uses old command | LSP config is loaded at startup. Restart Claude Code after patching |
 | npm global install fails | EACCES permission error | Run terminal as Administrator, or use `npx` instead of global install |
 | PATH not updated | Tool installed but not found | Restart shell/terminal after installing CLI tools |
 | Pandoc PDF fails | `pdflatex not found` | Install a LaTeX distribution (`winget install MiKTeX.MiKTeX`) or use `--pdf-engine=weasyprint` |
