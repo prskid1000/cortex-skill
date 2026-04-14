@@ -284,6 +284,17 @@ run("clickup", "task", "view", "ABC-123")
     - [Full pipeline: DB query → process → Excel + PDF → upload Drive → email](examples/data-pipelines.md#full-pipeline-db-query-to-process-to-excel--pdf-to-upload-drive-to-email)
 - **QUERY database**
   - MySQL MCP — [setup instructions](references/setup.md#4-mcp-servers)
+- **AUTOMATE browser (Chrome DevTools MCP)**
+  - Ref:
+    - [Critical rules (debug port, --user-data-dir gotcha)](references/chrome-devtools.md#critical-rules)
+    - [Edge — default profile (preserves cookies/logins)](references/chrome-devtools.md#edge--default-profile)
+    - [Edge — isolated profile (no kill needed)](references/chrome-devtools.md#edge--isolated-profile)
+    - [Chrome](references/chrome-devtools.md#chrome)
+    - [Verification](references/chrome-devtools.md#verification)
+  - Ex:
+    - [Launch Edge with user's real profile](examples/chrome-devtools.md#1-launch-edge-with-users-real-profile)
+    - [Launch Edge with throwaway profile](examples/chrome-devtools.md#2-launch-edge-with-a-throwaway-profile)
+    - [Diagnose: port won't open](examples/chrome-devtools.md#3-diagnose-port-wont-open)
 - **SETUP / INSTALL**
   - [Python packages (openpyxl, pymupdf, reportlab, ...)](references/setup.md#1-python-packages)
   - [CLI tools (gws, clickup, git, ffmpeg, pandoc, magick, node)](references/setup.md#2-cli-tools)
