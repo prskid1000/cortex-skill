@@ -151,14 +151,15 @@ function discover() {
     }
   }
 
-  // 4. SUMMARY MAX — find minTextBlockMessages:N,maxTokens:NNNNN
-  //    Anchor: the key name "minTextBlockMessages" is unique and semantic
+  // 4. SUMMARY MAX — find VAR=40000 immediately after the system-prompt override string
+  //    Anchor: the literal CLAUDE.md instruction string is stable and unique across versions
   {
-    const re = /(minTokens:[^,]+,minTextBlockMessages:\d+,maxTokens:)(\d+)/g;
+    const re = /exactly as written\.",([a-zA-Z_$][a-zA-Z0-9_$]*)=(\d{4,5}),/g;
     let m, hits = [];
     while ((m = re.exec(txt)) !== null) {
-      hits.push({ offset: m.index, value: parseInt(m[2], 10),
-        prefix: m[1], pattern: m[0] });
+      const off = m.index + m[0].length - (m[1].length + 1 + m[2].length + 1);
+      hits.push({ varName: m[1], offset: off, value: parseInt(m[2], 10),
+        pattern: `${m[1]}=${m[2]},` });
     }
     if (hits.length >= 2) {
       found.summaryMax = { value: hits[0].value, digits: String(hits[0].value).length,
@@ -266,8 +267,7 @@ const dry = flag("dry-run");
       console.error(`ERROR: --summary-max must be ${d.summaryMax.digits} digits`); process.exit(1);
     }
     for (const h of d.summaryMax.hits) {
-      const newPat = h.prefix + String(n);
-      patches.push({ name: `Summary max ${h.offset}`, find: h.pattern, replace: newPat });
+      patches.push({ name: `Summary max ${h.offset}`, find: h.pattern, replace: `${h.varName}=${n},` });
     }
   } else if (val && !d.summaryMax) {
     console.error("ERROR: Summary max not found in binary"); process.exit(1);

@@ -13,7 +13,7 @@ Patches the compiled Claude Code binary to override hardcoded limits. Finds cons
 | `--context-window` | 200000 → 262000 | 6 | Near token constant cluster |
 | `--max-output` | 128000 | 6 | After model name `includes()` |
 | `--autocompact` | 13000 → 20000 | 5 | Near `autocompact` string + 20000/3000 cluster |
-| `--summary-max` | 40000 → 80000 | 5 | `minTextBlockMessages:N,maxTokens:N` key |
+| `--summary-max` | 40000 → 80000 | 5 | VAR=40000 after "exactly as written." system-prompt string |
 
 ## Usage
 
