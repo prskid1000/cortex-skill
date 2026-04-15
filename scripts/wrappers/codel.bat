@@ -1,0 +1,16 @@
+@echo off
+REM VS Code Insiders launcher with local-model env for the Claude Code extension.
+REM Copy to a directory on PATH (e.g. %USERPROFILE%\Scripts) and rename if desired.
+set ANTHROPIC_BASE_URL=http://localhost:1235
+set ANTHROPIC_AUTH_TOKEN=lmstudio
+set ANTHROPIC_MODEL=qwen3.5-35b-a3b
+set BASH_DEFAULT_TIMEOUT_MS=1800000
+set BASH_MAX_TIMEOUT_MS=3600000
+set DISABLE_PROMPT_CACHING=1
+set CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1
+set CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS=1
+set CLAUDE_CODE_ATTRIBUTION_HEADER=0
+set CLAUDE_CODE_USE_POWERSHELL_TOOL=1
+set CLAUDE_CODE_MAX_OUTPUT_TOKENS=8192
+set ENABLE_TOOL_SEARCH=false
+code-insiders %*

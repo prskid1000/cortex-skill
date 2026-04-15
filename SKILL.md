@@ -303,13 +303,16 @@ run("clickup", "task", "view", "ABC-123")
   - [LSP plugins (Pyright, TypeScript, jdtls, Kotlin) + Windows fix](references/setup.md#5-lsp-plugins)
   - [Notes & gotchas](references/setup.md#6-notes)
   - [Run healthcheck (verify + auto-fix everything)](scripts/healthcheck.py)
-- **PATCH Claude Code binary**
-  - [What the patcher does](references/claude-patcher.md#what-it-does)
-  - [Patchable constants (context window, output limits)](references/claude-patcher.md#patchable-constants)
-  - [Usage (scan, apply, restore)](references/claude-patcher.md#usage)
-  - [After Claude Code updates (re-patching)](references/claude-patcher.md#after-claude-code-updates)
-  - [How it works internally](references/claude-patcher.md#how-it-works)
-  - [Limitations](references/claude-patcher.md#limitations)
+- **CUSTOMIZE Claude apps (Code + Desktop) for local-model use**
+  - [Overview & comparison table](references/claude-customization.md#at-a-glance)
+  - [Why two different approaches](references/claude-customization.md#why-two-different-approaches)
+  - [Launch wrappers (codel/claudel/claudedl/codexl)](references/claude-customization.md#launch-wrappers)
+  - [Installing wrappers to PATH](references/claude-customization.md#installing-the-wrappers)
+  - [When to use what](references/claude-customization.md#when-to-use-what)
+  - **PATCH Claude Code binary** — bigger context/output ([detail](references/claude-patcher.md))
+    - [Patchable constants](references/claude-patcher.md#patchable-constants) · [Usage](references/claude-patcher.md#usage) · [After updates](references/claude-patcher.md#after-claude-code-updates) · [How it works](references/claude-patcher.md#how-it-works)
+  - **TOGGLE Claude Desktop Custom 3P (BYOM)** — registry policy, no binary changes ([detail](references/claude-desktop-3p.md))
+    - [Requirements (HTTPS gateway, UAC)](references/claude-desktop-3p.md#requirements) · [Usage](references/claude-desktop-3p.md#usage) · [Verifying via main.log](references/claude-desktop-3p.md#verifying-it-worked) · [Registry schema](references/claude-desktop-3p.md#registry-schema-what-gets-written)
 
 ## Templates
 
@@ -322,3 +325,8 @@ run("clickup", "task", "view", "ABC-123")
 
 - [healthcheck.py](scripts/healthcheck.py) — verify packages, CLI tools, MCP servers, LSP plugins; auto-fix Windows patches
 - [claude-patcher.js](scripts/claude-patcher.js) — Claude Code binary patcher (context window, output limits)
+- [claude-desktop-3p.py](scripts/claude-desktop-3p.py) — Claude Desktop 3P/BYOM toggle (registry policy, no binary changes)
+- [wrappers/codel.bat](scripts/wrappers/codel.bat) — VS Code Insiders + local-model env
+- [wrappers/claudel.bat](scripts/wrappers/claudel.bat) — Claude Code CLI + local-model env
+- [wrappers/claudedl.bat](scripts/wrappers/claudedl.bat) — Claude Desktop launcher + dynamic MSIX path + local-model env
+- [wrappers/codexl.bat](scripts/wrappers/codexl.bat) — Codex CLI in OSS mode
