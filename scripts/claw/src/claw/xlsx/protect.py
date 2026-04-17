@@ -22,19 +22,26 @@ ALLOWABLE = {
 
 @click.command(name="protect")
 @click.argument("src", type=click.Path(exists=True, path_type=Path))
-@click.option("--scope", required=True, type=click.Choice(["sheet", "workbook"]))
+@click.option("--scope", required=True,
+              type=click.Choice(["sheet", "workbook", "both"]))
 @click.option("--sheet", default=None)
 @click.option("--password", default=None)
 @click.option("--allow", default="", help="Comma-separated actions to permit.")
+@click.option("--lock-structure", "lock_structure", is_flag=True,
+              help="Workbook scope: prevent sheet add/delete/reorder/rename.")
+@click.option("--lock-windows", "lock_windows", is_flag=True,
+              help="Workbook scope: prevent window resize/move.")
 @click.option("--clear", is_flag=True, help="Remove protection instead of applying it.")
 @common_output_options
 def protect(src: Path, scope: str, sheet: str | None, password: str | None,
-            allow: str, clear: bool,
+            allow: str, lock_structure: bool, lock_windows: bool, clear: bool,
             force: bool, backup: bool, as_json: bool, dry_run: bool,
             quiet: bool, verbose: bool, mkdir: bool) -> None:
     """Apply or clear sheet/workbook password protection."""
     try:
         from openpyxl import load_workbook
+        from openpyxl.workbook.protection import WorkbookProtection
+        from openpyxl.utils.protection import hash_password
     except ImportError:
         die("openpyxl not installed", code=EXIT_INPUT,
             hint="uv tool install 'claw[xlsx]'", as_json=as_json)
@@ -50,9 +57,11 @@ def protect(src: Path, scope: str, sheet: str | None, password: str | None,
     wb = load_workbook(src)
     allowed = {ALLOWABLE[a.strip()] for a in allow.split(",") if a.strip() in ALLOWABLE}
 
-    if scope == "sheet":
+    scopes = {"sheet", "workbook"} if scope == "both" else {scope}
+
+    if "sheet" in scopes:
         if not sheet:
-            die("--sheet required for --scope sheet", code=EXIT_INPUT, as_json=as_json)
+            die("--sheet required for sheet scope", code=EXIT_INPUT, as_json=as_json)
         ws = wb[sheet]
         if clear:
             ws.protection.sheet = False
@@ -63,13 +72,19 @@ def protect(src: Path, scope: str, sheet: str | None, password: str | None,
             for key in ALLOWABLE.values():
                 if hasattr(ws.protection, key):
                     setattr(ws.protection, key, key in allowed)
-    else:
+
+    if "workbook" in scopes:
         if clear:
             wb.security = None
         else:
-            wb.security = wb.security or type("S", (), {})()
-            wb.security.workbookPassword = password
-            wb.security.lockStructure = True
+            hashed = hash_password(password)
+            structure = lock_structure or not lock_windows
+            prot = WorkbookProtection(
+                lockStructure=structure,
+                lockWindows=bool(lock_windows),
+            )
+            prot.set_workbook_password(hashed, already_hashed=True)
+            wb.security = prot
 
     def _save(f):
         wb.save(f)
@@ -77,7 +92,8 @@ def protect(src: Path, scope: str, sheet: str | None, password: str | None,
     safe_write(src, _save, force=True, backup=backup, mkdir=mkdir)
 
     if as_json:
-        emit_json({"path": str(src), "scope": scope,
-                   "cleared": clear, "sheet": sheet})
+        emit_json({"path": str(src), "scope": scope, "cleared": clear,
+                   "sheet": sheet, "lock_structure": lock_structure,
+                   "lock_windows": lock_windows})
     elif not quiet:
         click.echo(f"{'cleared' if clear else 'applied'} {scope} protection")

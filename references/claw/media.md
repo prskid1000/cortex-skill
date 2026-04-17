@@ -1,5 +1,7 @@
 # `claw media` — Audio / Video Operations
 
+> Source directory: [scripts/claw/src/claw/media/](../../scripts/claw/src/claw/media/)
+
 Canonical CLI reference for `claw media ...`. Thin ergonomic wrapper over `ffmpeg` + `ffprobe` for the 80% of jobs that don't need a handwritten filter graph.
 
 ## Contents
@@ -39,10 +41,13 @@ Canonical CLI reference for `claw media ...`. Thin ergonomic wrapper over `ffmpe
 6. **Self-documenting.** `claw media --help` lists verbs; `claw media <verb> --help` prints flag table.
 7. **Pass-log files go to a tempdir** — ffmpeg's two-pass and loudnorm dump `.log` / `.mbtree` to CWD by default; `claw` always passes `-passlogfile "$(mktemp -d)/pass"` and cleans up on exit (including SIGINT).
 8. **`--dry-run` prints the ffmpeg command** that would run — copy-pasteable into a terminal — without executing.
+9. **Common output flags.** Every mutating verb inherits `--force`, `--backup`, `--dry-run`, `--json`, `--quiet`, `--mkdir` via the shared `@common_output_options` decorator. Individual verb blocks only call them out when the verb overrides the default; run `claw media <verb> --help` for the authoritative per-verb flag list.
 
 ---
 
 ## 1.1 extract-audio
+
+> Source: [scripts/claw/src/claw/media/extract_audio.py](../../scripts/claw/src/claw/media/extract_audio.py)
 
 Pull audio from a video into a clean audio-only file. Format inferred from `--format`; `--quality` maps to the codec's native quality knob.
 
@@ -64,6 +69,8 @@ claw media extract-audio concert.mkv --format flac --out concert.flac
 ---
 
 ## 2.1 thumbnail
+
+> Source: [scripts/claw/src/claw/media/thumbnail.py](../../scripts/claw/src/claw/media/thumbnail.py)
 
 Grab one still or a contact sheet. Single frame = `--at`; grid = `--count N --grid WxH`.
 
@@ -87,6 +94,8 @@ claw media thumbnail lecture.mkv --count 16 --grid 4x4 --width 320 --out contact
 
 ## 3.1 gif
 
+> Source: [scripts/claw/src/claw/media/gif.py](../../scripts/claw/src/claw/media/gif.py)
+
 Video → animated GIF using the two-step `palettegen` + `paletteuse` chain (standalone `-vf scale=...,gif` looks like garbage).
 
 ```
@@ -109,6 +118,8 @@ claw media gif demo.mp4 --start 00:00:05 --duration 4 --width 600 --fps 20 --out
 
 ## 4.1 trim
 
+> Source: [scripts/claw/src/claw/media/trim.py](../../scripts/claw/src/claw/media/trim.py)
+
 Cut a time range. Two modes:
 
 - **Fast path** (default) — keyframe stream-copy. Millisecond cut-points snap to the nearest preceding keyframe. Zero re-encode; seconds per hour of source.
@@ -126,6 +137,8 @@ claw media trim meeting.mp4 --from 900 --to 912.5 --precise --out exact.mp4     
 ---
 
 ## 5.1 compress
+
+> Source: [scripts/claw/src/claw/media/compress.py](../../scripts/claw/src/claw/media/compress.py)
 
 Shrink a video to a target size or CRF. `--target-size` runs two-pass with computed bitrate; `--crf` runs one-pass at constant quality. Mutually exclusive.
 
@@ -149,6 +162,8 @@ claw media compress raw.mov --crf 23 --preset slow --out quality.mp4
 
 ## 6.1 scale
 
+> Source: [scripts/claw/src/claw/media/scale.py](../../scripts/claw/src/claw/media/scale.py)
+
 Resize video. Geometry uses ImageMagick syntax (same as `claw img`): `1280x720`, `50%`, `1280x-1` (preserve aspect), `1280x720!` (force exact, stretch allowed).
 
 ```
@@ -163,6 +178,8 @@ claw media scale vertical.mp4 --geometry 720x-1 --out 720p.mp4     # keep aspect
 ---
 
 ## 7.1 concat
+
+> Source: [scripts/claw/src/claw/media/concat.py](../../scripts/claw/src/claw/media/concat.py)
 
 Join multiple clips. Default uses ffmpeg's concat demuxer (no re-encode) — **requires identical codec, resolution, framerate, and audio params** across inputs. If inputs differ, pass `--reencode` to normalize first.
 
@@ -180,6 +197,8 @@ claw media concat *.mp4 --reencode --codec h264 --out joined.mp4
 ---
 
 ## 8.1 burn-subs
+
+> Source: [scripts/claw/src/claw/media/burn_subs.py](../../scripts/claw/src/claw/media/burn_subs.py)
 
 Hardcode subtitles into pixels. Uses libass — supports SSA/ASS styling and SRT. Positional: subs file passed via `--srt`.
 
@@ -204,6 +223,8 @@ claw media burn-subs lecture.mp4 --srt lecture.srt --style 'FONT=Inter,SIZE=26,O
 
 ## 9.1 loudnorm
 
+> Source: [scripts/claw/src/claw/media/loudnorm.py](../../scripts/claw/src/claw/media/loudnorm.py)
+
 EBU R128 loudness normalization, two-pass. First pass measures; second pass applies the computed gain. Pass logs live in a tempdir and are removed after.
 
 ```
@@ -227,6 +248,8 @@ claw media loudnorm episode.mp4 --I -23 --out broadcast.mp4         # keeps vide
 
 ## 10.1 speed
 
+> Source: [scripts/claw/src/claw/media/speed.py](../../scripts/claw/src/claw/media/speed.py)
+
 Change playback speed. Video uses `setpts`; audio is `atempo`. ffmpeg's `atempo` is capped at `0.5..2.0` per instance — for `>2×` or `<0.5×`, `claw` auto-chains multiple `atempo` filters to hit the requested factor exactly.
 
 ```
@@ -242,6 +265,8 @@ claw media speed slomo.mp4 --factor 0.25 --out slow.mp4           # 0.25× (4× 
 ---
 
 ## 10.2 fade
+
+> Source: [scripts/claw/src/claw/media/fade.py](../../scripts/claw/src/claw/media/fade.py)
 
 Fade in/out, video and audio together.
 
@@ -262,6 +287,8 @@ claw media fade clip.mp4 --in 2 --out-sec 2 --out faded.mp4
 
 ## 10.3 crop-auto
 
+> Source: [scripts/claw/src/claw/media/crop_auto.py](../../scripts/claw/src/claw/media/crop_auto.py)
+
 Detect and remove letterbox/pillarbox bars. Runs `cropdetect` for ~10 seconds, takes the mode, then applies `crop=W:H:X:Y`.
 
 ```
@@ -280,6 +307,8 @@ claw media crop-auto widescreen-in-4x3.mp4 --out fixed.mp4
 ---
 
 ## 11.1 info
+
+> Source: [scripts/claw/src/claw/media/info.py](../../scripts/claw/src/claw/media/info.py)
 
 `ffprobe` normalized output — jc-style keys, nested `format` / `streams` / `chapters`, `*_utc` suffix on tz-aware datetime fields (`creation_time_utc`).
 
@@ -325,14 +354,22 @@ The following belong in raw `ffmpeg`, not `claw media`:
 - **Video stabilization** (vidstab — `vidstabdetect` → `vidstabtransform`). Two-pass filter graph; write it by hand.
 - **3D / stereoscopic processing.**
 
-## When `claw` isn't enough
+## When `claw media` isn't enough
 
-Drop to the underlying tool and look at its reference:
+Drop to the underlying tool:
 
-- ffmpeg filter catalog / codec deep-dive: [../media-tools.md § 3. ffmpeg](../media-tools.md#3-ffmpeg).
-- ffprobe streaming metadata: [../media-tools.md § 3.11 ffprobe](../media-tools.md#311-ffprobe).
+**ffmpeg** — binary install (Windows: `scoop install ffmpeg`; macOS: `brew install ffmpeg`; Linux: distro pkg) · [docs](https://ffmpeg.org/ffmpeg.html)
+- On Windows, `ffmpeg` installed via scoop/choco is a `.cmd`/`.exe` shim — `subprocess.run(["ffmpeg", ...])` from Python fails to find it; always `shutil.which("ffmpeg")` first.
+- `-y` overwrites without prompting; its absence makes ffmpeg wait for `y\n` on stdin — a script without `-y` hangs forever when the output exists.
+- Stream mapping is order-dependent: `-map 0:v:0 -map 0:a:0` vs `-map 0:a:0 -map 0:v:0` flips the stream order in the output, which some players (QuickTime) treat differently. Also, `-c copy` after filters silently ignores the filters — `-c:v libx264` is usually what you want.
 
-Rule of thumb: if you need `-filter_complex '[0:v][1:v]overlay=...'` or more than two inputs with non-trivial mapping — write it in ffmpeg directly.
+**ffprobe** — ships with ffmpeg · [docs](https://ffmpeg.org/ffprobe.html)
+- Default output is human-prose; for scripting use `-show_streams -show_format -of json` or `claw media info --json`.
+- Duration reported as `format.duration` may differ from the longest stream's duration (container vs stream); trust `stream.duration` for precision.
+
+**Pillow** — see [`claw img` escape hatches](img.md#when-claw-img-isnt-enough) for Pillow gotchas (used for thumbnail / poster-frame post-processing).
+
+**ImageMagick** — see [`claw img` escape hatches](img.md#when-claw-img-isnt-enough) for ImageMagick gotchas (used for contact-sheet grids).
 
 ---
 

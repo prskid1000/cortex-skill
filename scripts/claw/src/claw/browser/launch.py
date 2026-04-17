@@ -5,10 +5,12 @@ from __future__ import annotations
 import json
 import os
 import shutil
+import socket
 import subprocess
 import tempfile
 import time
 from pathlib import Path
+from urllib.error import URLError
 from urllib.request import urlopen
 
 import click
@@ -76,6 +78,29 @@ def _poll_debug_port(port: int, timeout_s: float) -> dict | None:
     return None
 
 
+def _probe_cdp(port: int) -> dict | None:
+    """One-shot GET on /json/version; None if port is not a CDP endpoint."""
+    try:
+        with urlopen(f"http://127.0.0.1:{port}/json/version", timeout=1.0) as resp:
+            if resp.status == 200:
+                return json.loads(resp.read().decode("utf-8"))
+    except (URLError, OSError, json.JSONDecodeError, TimeoutError):
+        return None
+    return None
+
+
+def _port_free(port: int) -> bool:
+    """True if we can bind 127.0.0.1:<port> right now."""
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    try:
+        s.bind(("127.0.0.1", port))
+    except OSError:
+        return False
+    finally:
+        s.close()
+    return True
+
+
 @click.command(name="launch")
 @click.option("--profile", type=click.Choice(["default", "throwaway"]), default="default")
 @click.option("--browser", type=click.Choice(["edge", "chrome"]), default="edge")
@@ -83,7 +108,7 @@ def _poll_debug_port(port: int, timeout_s: float) -> dict | None:
 @click.option("--user-data-dir", "user_data_dir", default=None)
 @click.option("--browser-path", "binary_override", default=None,
               help="Override auto-discovered browser binary path.")
-@click.option("--force", "force_kill", is_flag=True,
+@click.option("--kill-existing", "force_kill", is_flag=True,
               help="Kill existing browser processes before launching (default profile only).")
 @click.option("--timeout", default=15, type=int, help="Seconds to wait for /json/version.")
 @common_output_options
@@ -122,6 +147,20 @@ def launch(profile, browser, port, user_data_dir, binary_override,
 
     if dry_run:
         click.echo("would run: " + " ".join(f'"{a}"' if " " in a else a for a in args))
+        return
+
+    if not _port_free(port):
+        cdp = _probe_cdp(port)
+        if cdp is not None:
+            die(f"port {port} already serves a CDP endpoint — reuse it or pick --port",
+                code=4,
+                hint=f"ws URL: {cdp.get('webSocketDebuggerUrl')}",
+                as_json=as_json)
+        else:
+            die(f"port {port} is occupied by a non-CDP process",
+                code=4,
+                hint="pick a different --port (default 9222)",
+                as_json=as_json)
         return
 
     try:

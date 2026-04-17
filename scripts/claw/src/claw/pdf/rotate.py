@@ -15,8 +15,11 @@ from claw.common import PageSelector, common_output_options, die, emit_json, saf
               required=True, help="Rotation angle in degrees.")
 @click.option("-o", "--out", type=click.Path(path_type=Path), default=None)
 @click.option("--in-place", is_flag=True, help="Write back to <SRC>.")
+@click.option("--journal", "journal_name", default=None,
+              help="Name of an open journal session; emits a log entry describing this rotate op.")
 @common_output_options
 def rotate(src: Path, pages: str, angle: str, out: Path | None, in_place: bool,
+           journal_name: str | None,
            force: bool, backup: bool, as_json: bool, dry_run: bool,
            quiet: bool, verbose: bool, mkdir: bool) -> None:
     """Rotate pages of <SRC> by --by degrees."""
@@ -47,6 +50,13 @@ def rotate(src: Path, pages: str, angle: str, out: Path | None, in_place: bool,
 
     safe_write(target, lambda f: writer.write(f),
                force=force or in_place, backup=backup, mkdir=mkdir)
+    if journal_name:
+        from claw.pdf.journal import append_entry as _journal_append
+        _journal_append(journal_name, {
+            "verb": "rotate", "src": str(src), "out": str(target),
+            "pages": pages, "angle": by, "pages_rotated": len(targets),
+            "summary": f"rotated {len(targets)} page(s) by {by}°",
+        })
     if as_json:
         emit_json({"out": str(target), "pages_rotated": len(targets), "angle": by})
     elif not quiet:

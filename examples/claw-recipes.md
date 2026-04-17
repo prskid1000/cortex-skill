@@ -10,7 +10,7 @@
   - [Build a PDF from HTML or Markdown](#create-pdf-from-source)
 - **READ / EXTRACT** — `claw xlsx read`, `claw pdf extract-*`, `claw docx read`, `claw html select`
   - [Dump cells, ranges, tables, text](#read-cells-and-text)
-  - [Pull tables, images, forms out of PDFs](#read-extract-from-pdf)
+  - [Pull tables, images, forms out of PDFs](#read--extract-from-pdf)
   - [Scrape HTML / query XML](#read-web-and-xml)
   - [Inspect metadata, EXIF, media streams](#read-metadata)
 - **TRANSFORM / EDIT** — `claw xlsx style|filter|freeze`, `claw pdf merge|split|rotate`, `claw img resize|crop|watermark`
@@ -19,14 +19,14 @@
   - [Resize, crop, watermark, convert images](#transform-image)
   - [Insert headings, tables, images into docs/decks](#transform-docs-and-decks)
 - **CONVERT format** — `claw convert`, `claw xlsx to-*`, `claw doc export`, `claw img convert`
-  - [Any ↔ Any via pandoc](#convert-pandoc)
+  - [Any ↔ Any via pandoc](#convert-via-pandoc)
   - [Office ↔ PDF / HTML / CSV / Markdown](#convert-office)
-  - [Image / media format swaps](#convert-image-media)
+  - [Image / media format swaps](#convert-image--media)
 - **PROCESS video / audio** — `claw media`
   - [Trim, concat, scale, compress, gif, subs](#media-ops)
 - **SEND / PUBLISH** — `claw email`, `claw doc|sheet share`, `gws drive`
   - [Send mail with attachments / HTML / inline images](#send-email)
-  - [Upload to Drive, share links, round-trip Sheets](#send-drive-and-sheets)
+  - [Upload to Drive, share links, round-trip Sheets](#send-via-drive-and-sheets)
 - **AUTOMATE browser** — `claw browser`
   - [Launch Chrome/Edge with remote debugging](#browser-ops)
 - **PIPELINES** — `claw pipeline run` ([§pipeline](../references/claw/pipeline.md))
@@ -40,6 +40,8 @@
 ## CREATE
 
 ### Create blank
+
+> Uses: [xlsx new](../scripts/claw/src/claw/xlsx/new.py) · [docx new](../scripts/claw/src/claw/docx/new.py) · [pptx new](../scripts/claw/src/claw/pptx/new.py) · [doc create](../scripts/claw/src/claw/doc/create.py) · `pdf new` (**NOT IMPLEMENTED**)
 
 New empty artefacts on disk. Use `--force` to overwrite, `--mkdir` to auto-create parents. See [claw/xlsx](../references/claw/xlsx.md), [claw/docx](../references/claw/docx.md), [claw/pptx](../references/claw/pptx.md).
 
@@ -61,6 +63,8 @@ claw doc create --title "Q3 Report"
 ```
 
 ### Create from data
+
+> Uses: [xlsx from-csv](../scripts/claw/src/claw/xlsx/from_csv.py) · [xlsx from-json](../scripts/claw/src/claw/xlsx/from_json.py) · [docx from-md](../scripts/claw/src/claw/docx/from_md.py) · [doc create](../scripts/claw/src/claw/doc/create.py) · `xlsx from-html` / `xlsx from-pdf` / `pptx from-outline` (**NOT IMPLEMENTED**)
 
 One-shot ingestion from CSV / JSON / Markdown / HTML / PDF. Body text lives in a file or stdin; pipe into `--data -` to skip the temp file. See [claw/xlsx §CREATE](../references/claw/xlsx.md#1-create).
 
@@ -89,6 +93,8 @@ claw doc create --title "Spec" --from spec.md --share user:alice@x.com:writer --
 
 ### Create PDF from source
 
+> Uses: [pdf from-html](../scripts/claw/src/claw/pdf/from_html.py) · [pdf from-md](../scripts/claw/src/claw/pdf/from_md.py) · [convert convert](../scripts/claw/src/claw/convert/convert.py)
+
 Skip LaTeX: generate PDFs straight from HTML or Markdown via the bundled engines. See [claw/pdf](../references/claw/pdf.md) and [claw/convert](../references/claw/convert.md).
 
 ```bash
@@ -110,6 +116,8 @@ claw convert input.rst --out /tmp/out.html --standalone --css style.css
 ## READ / EXTRACT
 
 ### Read cells and text
+
+> Uses: [xlsx read](../scripts/claw/src/claw/xlsx/read.py) · [xlsx stat](../scripts/claw/src/claw/xlsx/stat.py) · [docx read](../scripts/claw/src/claw/docx/read.py) · [doc read](../scripts/claw/src/claw/doc/read.py) · `xlsx sql` (**NOT IMPLEMENTED**)
 
 Quickly pull values as JSON / CSV / text without writing Python. See [claw/xlsx §READ](../references/claw/xlsx.md#2-read--extract), [claw/docx §READ](../references/claw/docx.md#2-read--inspect).
 
@@ -133,6 +141,8 @@ claw doc read <DOC_ID> --format md --out /tmp/doc.md
 ```
 
 ### Read / extract from PDF
+
+> Uses: [pdf extract-text](../scripts/claw/src/claw/pdf/extract_text.py) · [pdf extract-tables](../scripts/claw/src/claw/pdf/extract_tables.py) · [pdf extract-images](../scripts/claw/src/claw/pdf/extract_images.py) · [pdf render](../scripts/claw/src/claw/pdf/render.py) · [pdf search](../scripts/claw/src/claw/pdf/search.py) · `pdf form-list` (**NOT IMPLEMENTED**)
 
 Text, tables, images, form fields — one verb each. See [claw/pdf](../references/claw/pdf.md).
 
@@ -158,6 +168,8 @@ claw pdf search report.pdf --query "net revenue" --json
 
 ### Read web and XML
 
+> Uses: [web fetch](../scripts/claw/src/claw/web/fetch.py) · [html select](../scripts/claw/src/claw/html/select.py) · [html strip](../scripts/claw/src/claw/html/strip.py) · [xml xpath](../scripts/claw/src/claw/xml/xpath.py) · [xml to-json](../scripts/claw/src/claw/xml/to_json.py)
+
 Fetch, parse, query without writing a scraper. See [claw/web](../references/claw/web.md), [claw/html](../references/claw/html.md), [claw/xml](../references/claw/xml.md).
 
 ```bash
@@ -181,6 +193,8 @@ claw xml to-json feed.xml --out feed.json
 ```
 
 ### Read metadata
+
+> Uses: [xlsx meta](../scripts/claw/src/claw/xlsx/meta.py) · [pdf info](../scripts/claw/src/claw/pdf/info.py) · [img exif](../scripts/claw/src/claw/img/exif.py) · [media info](../scripts/claw/src/claw/media/info.py) · `docx comments dump` / `docx diff` / `pdf toc` / `pdf words` (**NOT IMPLEMENTED**)
 
 ```bash
 # xlsx core properties
@@ -207,6 +221,8 @@ claw media info lecture.mp4 --json
 ## TRANSFORM / EDIT
 
 ### Transform workbook
+
+> Uses: [xlsx freeze](../scripts/claw/src/claw/xlsx/freeze.py) · [xlsx filter](../scripts/claw/src/claw/xlsx/filter_.py) · [xlsx conditional](../scripts/claw/src/claw/xlsx/conditional.py) · [xlsx validate](../scripts/claw/src/claw/xlsx/validate.py) · [xlsx chart](../scripts/claw/src/claw/xlsx/chart.py) · [xlsx append](../scripts/claw/src/claw/xlsx/append.py) · [xlsx protect](../scripts/claw/src/claw/xlsx/protect.py) · `xlsx style` / `xlsx format` / `xlsx table` / `xlsx image add` (**NOT IMPLEMENTED**)
 
 Apply styling, conditional formatting, filters, charts, validation to an existing xlsx in place (or with `--backup`). See [claw/xlsx §FORMAT](../references/claw/xlsx.md#4-format--style).
 
@@ -246,6 +262,8 @@ claw xlsx protect sales.xlsx --scope sheet --sheet Q1 --password hunter2 --allow
 ```
 
 ### Transform PDF
+
+> Uses: [pdf merge](../scripts/claw/src/claw/pdf/merge.py) · [pdf split](../scripts/claw/src/claw/pdf/split.py) · [pdf rotate](../scripts/claw/src/claw/pdf/rotate.py) · [pdf watermark](../scripts/claw/src/claw/pdf/watermark.py) · [pdf redact](../scripts/claw/src/claw/pdf/redact.py) · [pdf encrypt](../scripts/claw/src/claw/pdf/encrypt.py) · [pdf flatten](../scripts/claw/src/claw/pdf/flatten.py) · [pdf ocr](../scripts/claw/src/claw/pdf/ocr.py) · `pdf stamp` / `pdf form-fill` / `pdf bookmark` (**NOT IMPLEMENTED**)
 
 Merge, split, rotate, watermark, redact, annotate — without a line of Python. See [claw/pdf](../references/claw/pdf.md).
 
@@ -288,6 +306,8 @@ claw pdf bookmark manual.pdf --title "Chapter 3" --page 12 --out /tmp/bookmarked
 ```
 
 ### Transform image
+
+> Uses: [img resize](../scripts/claw/src/claw/img/resize.py) · [img fit](../scripts/claw/src/claw/img/fit.py) · [img pad](../scripts/claw/src/claw/img/pad.py) · [img thumb](../scripts/claw/src/claw/img/thumb.py) · [img crop](../scripts/claw/src/claw/img/crop.py) · [img sharpen](../scripts/claw/src/claw/img/sharpen.py) · [img enhance](../scripts/claw/src/claw/img/enhance.py) · [img exif](../scripts/claw/src/claw/img/exif.py) · [img watermark](../scripts/claw/src/claw/img/watermark.py) · [img overlay](../scripts/claw/src/claw/img/overlay.py) · [img composite](../scripts/claw/src/claw/img/composite.py) · [img batch](../scripts/claw/src/claw/img/batch.py)
 
 Resize, crop, watermark, convert — single verbs. See [claw/img](../references/claw/img.md).
 
@@ -334,6 +354,8 @@ claw img batch ./photos --op 'resize:2048x|strip|webp:85' --out ./web --recursiv
 ```
 
 ### Transform docs and decks
+
+> Uses: [docx add-heading](../scripts/claw/src/claw/docx/add_heading.py) · [docx add-paragraph](../scripts/claw/src/claw/docx/add_paragraph.py) · [docx add-table](../scripts/claw/src/claw/docx/add_table.py) · [docx add-image](../scripts/claw/src/claw/docx/add_image.py) · [docx toc](../scripts/claw/src/claw/docx/toc.py) · [pptx add-slide](../scripts/claw/src/claw/pptx/add_slide.py) · [pptx add-chart](../scripts/claw/src/claw/pptx/add_chart.py) · [pptx brand](../scripts/claw/src/claw/pptx/brand.py) · [pptx notes](../scripts/claw/src/claw/pptx/notes.py) · `docx insert pagebreak` / `docx hyperlink add` / `pptx fill` / `doc replace` (**NOT IMPLEMENTED**)
 
 Insert content into existing docx / pptx at specific anchors. See [claw/docx §EDIT](../references/claw/docx.md#3-edit), [claw/pptx §EDIT](../references/claw/pptx.md#2-edit).
 
@@ -384,6 +406,8 @@ claw doc replace <DOC_ID> --find "{{QUARTER}}" --with "Q3 2025"
 
 ### Convert via pandoc
 
+> Uses: [convert convert](../scripts/claw/src/claw/convert/convert.py) · [convert book](../scripts/claw/src/claw/convert/book.py) · [convert slides](../scripts/claw/src/claw/convert/slides.py) · [convert md2pdf-nolatex](../scripts/claw/src/claw/convert/md2pdf_nolatex.py) · [convert list-formats](../scripts/claw/src/claw/convert/list_formats.py)
+
 `claw convert` wraps pandoc end-to-end; the `book` / `slides` / `md2pdf-nolatex` presets skip the flag-soup for the three most common tasks. See [claw/convert](../references/claw/convert.md).
 
 ```bash
@@ -413,6 +437,8 @@ claw convert md2pdf-nolatex README.md --out README.pdf --css style.css
 
 ### Convert office
 
+> Uses: [xlsx to-csv](../scripts/claw/src/claw/xlsx/to_csv.py) · [doc export](../scripts/claw/src/claw/doc/export.py) · `xlsx to-pdf` (**NOT IMPLEMENTED**)
+
 Office ↔ other formats via the per-noun export verbs. See [claw/xlsx §2](../references/claw/xlsx.md#2-read--extract), [claw/doc §EXPORT](../references/claw/doc.md#4-export).
 
 ```bash
@@ -429,6 +455,8 @@ claw doc export <DOC_ID> --as md --out report.md
 ```
 
 ### Convert image / media
+
+> Uses: [img convert](../scripts/claw/src/claw/img/convert_.py) · [img to-jpeg](../scripts/claw/src/claw/img/to_jpeg.py) · [img to-webp](../scripts/claw/src/claw/img/to_webp.py) · [media compress](../scripts/claw/src/claw/media/compress.py) · `media remux` (**NOT IMPLEMENTED**)
 
 ```bash
 # Image format swap by extension
@@ -453,6 +481,8 @@ claw media compress big.mov --codec h265 --crf 23 --out small.mp4
 ## PROCESS video / audio
 
 ### Media ops
+
+> Uses: [media extract-audio](../scripts/claw/src/claw/media/extract_audio.py) · [media thumbnail](../scripts/claw/src/claw/media/thumbnail.py) · [media gif](../scripts/claw/src/claw/media/gif.py) · [media trim](../scripts/claw/src/claw/media/trim.py) · [media compress](../scripts/claw/src/claw/media/compress.py) · [media concat](../scripts/claw/src/claw/media/concat.py) · [media burn-subs](../scripts/claw/src/claw/media/burn_subs.py) · [media loudnorm](../scripts/claw/src/claw/media/loudnorm.py) · [media speed](../scripts/claw/src/claw/media/speed.py) · [media fade](../scripts/claw/src/claw/media/fade.py) · [media crop-auto](../scripts/claw/src/claw/media/crop_auto.py)
 
 All via `claw media` (ffmpeg under the hood). See [claw/media](../references/claw/media.md).
 
@@ -500,6 +530,8 @@ claw media crop-auto letterboxed.mp4 --out cropped.mp4
 
 ### Send email
 
+> Uses: [email send](../scripts/claw/src/claw/email/send.py) · [email draft](../scripts/claw/src/claw/email/draft.py) · [email reply](../scripts/claw/src/claw/email/reply.py) · [email forward](../scripts/claw/src/claw/email/forward.py) · [email search](../scripts/claw/src/claw/email/search.py) · [email download-attachment](../scripts/claw/src/claw/email/download_attachment.py)
+
 `claw email` handles MIME, threading headers, base64url — the common footguns in raw `gws gmail`. See [claw/email](../references/claw/email.md).
 
 ```bash
@@ -537,6 +569,8 @@ claw email download-attachment <MSG_ID> <ATT_ID> --out /tmp/invoice.pdf
 
 ### Send via Drive and Sheets
 
+> Uses: [sheet upload](../scripts/claw/src/claw/sheet/upload.py) · [sheet download](../scripts/claw/src/claw/sheet/download.py) · [sheet share](../scripts/claw/src/claw/sheet/share.py) · [sheet list](../scripts/claw/src/claw/sheet/list_.py) · `doc share` (**NOT IMPLEMENTED**)
+
 ```bash
 # Share an existing Doc publicly (reader)
 claw doc share <DOC_ID> --anyone --role reader
@@ -562,7 +596,9 @@ claw sheet list --parent <FOLDER_ID> --json
 
 ### Browser ops
 
-Launches Chromium-family browsers with remote debugging so Chrome DevTools MCP can attach. See [claw/browser](../references/claw/browser.md) and [examples/chrome-devtools.md](chrome-devtools.md) for MCP workflows.
+> Uses: [browser launch](../scripts/claw/src/claw/browser/launch.py)
+
+Launches Chromium-family browsers with remote debugging so Chrome DevTools MCP can attach. See [claw/browser](../references/claw/browser.md) (includes a manual-launch escape hatch for custom flags).
 
 ```bash
 # Launch Edge on the real profile (preserves cookies/logins)
@@ -580,6 +616,8 @@ claw browser launch --engine chrome --url https://example.com --port 9222
 ## PIPELINES
 
 ### Pipeline ops
+
+> Uses: [pipeline run](../scripts/claw/src/claw/pipeline/run.py) · [pipeline validate](../scripts/claw/src/claw/pipeline/validate.py) · [pipeline list-steps](../scripts/claw/src/claw/pipeline/list_steps.py) · [pipeline graph](../scripts/claw/src/claw/pipeline/graph.py)
 
 `claw pipeline` runs YAML recipes as a parallel DAG with resumable cache. See [claw-pipelines.md](claw-pipelines.md) for complete recipes, [claw/pipeline](../references/claw/pipeline.md) for DSL details.
 
@@ -606,6 +644,8 @@ claw pipeline run recipe.yaml --set quarter=Q3 --set year=2026
 ---
 
 ## DIAGNOSE
+
+> Uses: [doctor](../scripts/claw/src/claw/doctor.py) · [completion](../scripts/claw/src/claw/completion.py)
 
 ```bash
 # Verify all external deps (gws auth, pandoc, ffmpeg, magick, ...)

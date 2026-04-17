@@ -1,8 +1,10 @@
 # `claw pdf` — PDF Operations Reference
 
+> Source directory: [scripts/claw/src/claw/pdf/](../../scripts/claw/src/claw/pdf/)
+
 CLI wrapper spanning PyMuPDF (fitz), pypdf, pdfplumber, and reportlab. The PDF surface is large, so this is the biggest `claw` command.
 
-Library API for escape hatches: [references/pdf-tools.md](../pdf-tools.md).
+Library API for escape hatches: see [When `claw pdf` Isn't Enough](#when-claw-pdf-isnt-enough).
 
 ## Contents
 
@@ -26,7 +28,7 @@ Library API for escape hatches: [references/pdf-tools.md](../pdf-tools.md).
   - [Scanned → searchable PDF](#91-ocr)
 - **CREATE**
   - [HTML → PDF](#101-from-html) · [Markdown → PDF](#102-from-md) · [Convert EPUB/XPS/CBZ → PDF](#103-convert) · [QR code PDF](#104-qr) · [Barcode PDF](#105-barcode)
-- **When `claw pdf` isn't enough** — [library escape hatches](#when-claw-isnt-enough)
+- **When `claw pdf` isn't enough** — [library escape hatches](#when-claw-pdf-isnt-enough)
 
 ---
 
@@ -42,12 +44,15 @@ Library API for escape hatches: [references/pdf-tools.md](../pdf-tools.md).
 5. **Help** — `claw pdf --help`, `claw pdf <verb> --help`, `claw help pdf <verb>` alias, `--examples` for recipes.
 6. **Stream mode** — `--stream` opens with PyMuPDF's page iterator (no full tree held in memory); required for PDFs &gt; 100 MB. Not all verbs support it (`merge`, `form fill` must load fully).
 7. **Licence surface — PyMuPDF is AGPL-3.0.** Using `claw pdf` in a closed-source service triggers AGPL obligations (network copyleft). `claw` prints a one-line AGPL notice on first use per shell session unless `CLAW_SUPPRESS_AGPL=1`. For AGPL-incompatible deployments use only the `pypdf` / `reportlab` code paths (flagged as `--engine pypdf|reportlab` where available).
+8. **Common output flags** — every mutating verb inherits `--force`, `--backup`, `--dry-run`, `--json`, `--quiet`, `--mkdir` via the shared `@common_output_options` decorator. Individual verb blocks only call them out when the verb overrides the default; run `claw pdf <verb> --help` for the authoritative per-verb flag list.
 
 ---
 
 ## 1. READ / EXTRACT
 
 ### 1.1 `extract-text`
+
+> Source: [scripts/claw/src/claw/pdf/extract_text.py](../../scripts/claw/src/claw/pdf/extract_text.py)
 
 Extract text in one of PyMuPDF's output modes.
 
@@ -71,6 +76,8 @@ claw pdf extract-text report.pdf --pages 1-5 --mode blocks --json
 
 ### 1.2 `extract-tables`
 
+> Source: [scripts/claw/src/claw/pdf/extract_tables.py](../../scripts/claw/src/claw/pdf/extract_tables.py)
+
 Table extraction via pdfplumber.
 
 ```
@@ -93,6 +100,8 @@ claw pdf extract-tables statement.pdf --pages 2-end --strategy lines --snap-tol 
 
 ### 1.3 `extract-images`
 
+> Source: [scripts/claw/src/claw/pdf/extract_images.py](../../scripts/claw/src/claw/pdf/extract_images.py)
+
 Dump embedded images to a directory.
 
 ```
@@ -108,6 +117,8 @@ claw pdf extract-images brochure.pdf --out /tmp/imgs/ --min-width 300
 
 ### 1.4 `search`
 
+> Source: [scripts/claw/src/claw/pdf/search.py](../../scripts/claw/src/claw/pdf/search.py)
+
 Search pages; returns page + bounding boxes.
 
 ```
@@ -122,6 +133,8 @@ claw pdf search contract.pdf --term "SSN" --regex --context 60 --json
 ```
 
 ### 1.5 `info`
+
+> Source: [scripts/claw/src/claw/pdf/info.py](../../scripts/claw/src/claw/pdf/info.py)
 
 Print document metadata + structural summary.
 
@@ -139,6 +152,8 @@ claw pdf info contract.pdf --json
 
 ### 1.6 `chars`
 
+> Source: **NOT IMPLEMENTED** — no `pdf/chars.py` exists.
+
 Per-character positional data (pdfplumber `.chars`).
 
 ```
@@ -146,6 +161,8 @@ claw pdf chars <in.pdf> --pages 1 [--bbox x0,y0,x1,y1] [--json]
 ```
 
 ### 1.7 `words`
+
+> Source: **NOT IMPLEMENTED** — no `pdf/words.py` exists.
 
 Extract words with font filtering.
 
@@ -163,6 +180,8 @@ claw pdf words spec.pdf --pages 1-3 --filter "fontname~=Bold" --filter "size>=14
 
 ### 1.8 `shapes`
 
+> Source: **NOT IMPLEMENTED** — no `pdf/shapes.py` exists.
+
 Vector objects (lines, rects, curves) from pdfplumber.
 
 ```
@@ -174,6 +193,8 @@ claw pdf shapes <in.pdf> --pages 1 [--kind line|rect|curve|all] [--json]
 ## 2. RENDER
 
 ### 2.1 `render`
+
+> Source: [scripts/claw/src/claw/pdf/render.py](../../scripts/claw/src/claw/pdf/render.py)
 
 Rasterize a page to PNG / JPEG.
 
@@ -190,6 +211,8 @@ claw pdf render report.pdf --page 3 --out /tmp/p3.png --dpi 300
 ```
 
 ### 2.2 `tables-debug`
+
+> Source: **NOT IMPLEMENTED** — no `pdf/tables_debug.py` exists.
 
 Overlay pdfplumber's table-detection edges on a rendered page — useful when tuning `--strategy` / `--snap-tol`.
 
@@ -210,6 +233,8 @@ claw pdf tables-debug statement.pdf --page 2 --out /tmp/dbg.png --strategy lines
 
 ### 3.1 `merge`
 
+> Source: [scripts/claw/src/claw/pdf/merge.py](../../scripts/claw/src/claw/pdf/merge.py)
+
 Pdftk-style concatenation. Each input can carry a range selector.
 
 ```
@@ -224,6 +249,8 @@ claw pdf merge /tmp/report.pdf cover.pdf body.pdf:1-10,15 appendix.pdf:all --toc
 ```
 
 ### 3.2 `split`
+
+> Source: [scripts/claw/src/claw/pdf/split.py](../../scripts/claw/src/claw/pdf/split.py)
 
 Split by ranges or per page.
 
@@ -244,6 +271,8 @@ claw pdf split book.pdf --ranges "1-5,6-end" --out-dir /tmp/split/
 
 ### 3.3 `rotate`
 
+> Source: [scripts/claw/src/claw/pdf/rotate.py](../../scripts/claw/src/claw/pdf/rotate.py)
+
 Rotate pages in place.
 
 ```
@@ -257,6 +286,8 @@ claw pdf rotate scan.pdf --pages 3-7 --by 90 --in-place --backup
 ```
 
 ### 3.4 `crop`
+
+> Source: **NOT IMPLEMENTED** — no `pdf/crop.py` exists.
 
 Crop a page to a rectangle.
 
@@ -278,6 +309,8 @@ claw pdf crop report.pdf --page 3 --box 72,72,540,720 --out /tmp/cropped.pdf
 
 ### 4.1 `watermark`
 
+> Source: [scripts/claw/src/claw/pdf/watermark.py](../../scripts/claw/src/claw/pdf/watermark.py)
+
 Diagonal (default) text watermark across every page.
 
 ```
@@ -295,6 +328,8 @@ claw pdf watermark draft.pdf --text "CONFIDENTIAL" --opacity 0.2 --rotate 45 \
 ```
 
 ### 4.2 `stamp`
+
+> Source: **NOT IMPLEMENTED** — no `pdf/stamp.py` exists.
 
 Image stamp at a named anchor or coordinate.
 
@@ -315,6 +350,8 @@ claw pdf stamp report.pdf --image logo.png --scale 0.2 --at TR --offset 20,20 --
 ## 5. SECURE
 
 ### 5.1 `redact`
+
+> Source: [scripts/claw/src/claw/pdf/redact.py](../../scripts/claw/src/claw/pdf/redact.py)
 
 Apply redactions — pixel + text removal. Uses PyMuPDF `apply_redactions`.
 
@@ -341,6 +378,8 @@ claw pdf redact form.pdf --regex "SSN \d{3}-\d{2}-\d{4}" --dehyphenate --in-plac
 
 ### 5.2 `encrypt`
 
+> Source: [scripts/claw/src/claw/pdf/encrypt.py](../../scripts/claw/src/claw/pdf/encrypt.py)
+
 Password-protect with access flags.
 
 ```
@@ -361,6 +400,8 @@ claw pdf encrypt contract.pdf --password hunter2 --aes256 --allow print --out /t
 
 ### 5.3 `decrypt`
 
+> Source: [scripts/claw/src/claw/pdf/decrypt.py](../../scripts/claw/src/claw/pdf/decrypt.py)
+
 Remove password protection (requires valid owner or user password).
 
 ```
@@ -368,6 +409,8 @@ claw pdf decrypt <in.pdf> --password P [--out FILE] [--in-place]
 ```
 
 ### 5.4 `flatten`
+
+> Source: [scripts/claw/src/claw/pdf/flatten.py](../../scripts/claw/src/claw/pdf/flatten.py)
 
 Bake form fields and annotations into static page content.
 
@@ -388,6 +431,8 @@ claw pdf flatten signed.pdf --forms --annotations --out /tmp/final.pdf
 ## 6. ANNOTATE
 
 ### 6.1 `annotate`
+
+> Source: **NOT IMPLEMENTED** — no `pdf/annotate.py` exists.
 
 Add a highlight, sticky note, or free-hand ink.
 
@@ -413,6 +458,8 @@ claw pdf annotate report.pdf --page 3 --note "Check with legal" --at 100,150 --a
 
 ### 7.1 `form list`
 
+> Source: **NOT IMPLEMENTED** — no `pdf/form.py` / `pdf/form_list.py` exists.
+
 Enumerate AcroForm / XFA fields.
 
 ```
@@ -422,6 +469,8 @@ claw pdf form list <in.pdf> [--json]
 Output: `[{name, type, value, flags, page, rect}]`.
 
 ### 7.2 `form fill`
+
+> Source: **NOT IMPLEMENTED** — no `pdf/form_fill.py` exists.
 
 Populate fields from a JSON object keyed by field name.
 
@@ -443,6 +492,8 @@ claw pdf form fill application.pdf --values answers.json --flatten --out /tmp/su
 
 ### 8.1 `meta`
 
+> Source: **NOT IMPLEMENTED** — no `pdf/meta.py` exists.
+
 Core metadata.
 
 ```
@@ -454,6 +505,8 @@ claw pdf meta set <in.pdf> [--title STR] [--author STR] [--subject STR]
 ```
 
 ### 8.2 `toc`
+
+> Source: **NOT IMPLEMENTED** — no `pdf/toc.py` exists.
 
 Read or overwrite the outline / bookmarks tree.
 
@@ -474,6 +527,8 @@ claw pdf toc set book.pdf --json toc.json --in-place --backup
 
 ### 8.3 `bookmark add`
 
+> Source: **NOT IMPLEMENTED** — no `pdf/bookmark.py` exists.
+
 Append a single bookmark (alternative to full `toc set`).
 
 ```
@@ -482,6 +537,8 @@ claw pdf bookmark add <in.pdf> --title STR --page N [--level 1] [--parent "Chapt
 ```
 
 ### 8.4 `layer toggle`
+
+> Source: **NOT IMPLEMENTED** — no `pdf/layer.py` exists.
 
 Show / hide an Optional Content Group (layer).
 
@@ -496,6 +553,8 @@ claw pdf layer toggle map.pdf --name "Topology" --hide --in-place
 ```
 
 ### 8.5 `labels set`
+
+> Source: **NOT IMPLEMENTED** — no `pdf/labels.py` exists.
 
 Set PDF page label ruleset (e.g. roman numerals for front matter).
 
@@ -513,6 +572,8 @@ claw pdf labels set book.pdf --rule "i:1-8,1:9-end" --in-place
 
 ### 8.6 `attach`
 
+> Source: **NOT IMPLEMENTED** — no `pdf/attach.py` exists.
+
 File attachments (embedded files).
 
 ```
@@ -523,6 +584,8 @@ claw pdf attach remove <in.pdf> --name NAME [--in-place]
 ```
 
 ### 8.7 `journal`
+
+> Source: **NOT IMPLEMENTED** — no `pdf/journal.py` exists.
 
 Experimental — stage a series of edits, inspect, commit or roll back. Each verb supports `--journal NAME` which writes staged changes to a sidecar.
 
@@ -549,6 +612,8 @@ claw pdf journal commit --name fix --in-place --backup
 
 ### 9.1 `ocr`
 
+> Source: [scripts/claw/src/claw/pdf/ocr.py](../../scripts/claw/src/claw/pdf/ocr.py)
+
 Run OCR via PyMuPDF + Tesseract. Produces a text layer over the original pixels so `claw pdf search` / `extract-text` then work.
 
 ```
@@ -571,6 +636,8 @@ claw pdf ocr scan.pdf --lang eng+fra --dpi 300 --sidecar --out /tmp/searchable.p
 
 ### 10.1 `from-html`
 
+> Source: [scripts/claw/src/claw/pdf/from_html.py](../../scripts/claw/src/claw/pdf/from_html.py)
+
 HTML → PDF via reportlab's Story API. Accepts a subset of HTML (paragraphs, headings, tables, lists, images, inline styling).
 
 ```
@@ -586,6 +653,8 @@ claw pdf from-html invoice.html /tmp/invoice.pdf --rect "0.5in,0.5in,8in,10.5in"
 ```
 
 ### 10.2 `from-md`
+
+> Source: [scripts/claw/src/claw/pdf/from_md.py](../../scripts/claw/src/claw/pdf/from_md.py)
 
 Markdown → PDF via reportlab PLATYPUS with theme presets.
 
@@ -605,6 +674,8 @@ claw pdf from-md spec.md /tmp/spec.pdf --theme corporate --toc --title "Spec" --
 
 ### 10.3 `convert`
 
+> Source: **NOT IMPLEMENTED** — no `pdf/convert.py` exists.
+
 Convert other document formats (EPUB, XPS, CBZ, plaintext) to PDF.
 
 ```
@@ -618,6 +689,8 @@ claw pdf convert novel.epub /tmp/novel.pdf
 ```
 
 ### 10.4 `qr`
+
+> Source: [scripts/claw/src/claw/pdf/qr.py](../../scripts/claw/src/claw/pdf/qr.py)
 
 QR code PDF (single-page, value-centred).
 
@@ -633,6 +706,8 @@ claw pdf qr --value "https://example.com" --out /tmp/qr.pdf --size 200 --caption
 ```
 
 ### 10.5 `barcode`
+
+> Source: **NOT IMPLEMENTED** — no `pdf/barcode.py` exists.
 
 Various barcode types.
 
@@ -651,15 +726,35 @@ claw pdf barcode --type code128 --value "SKU-004321" --out /tmp/label.pdf --size
 
 ## When `claw pdf` Isn't Enough
 
-Drop to the library directly — see [pdf-tools.md](../pdf-tools.md).
+Drop to the library directly:
 
-| Use case | Why `claw` can't do it | Library anchor |
-|---|---|---|
-| Freeform reportlab Canvas drawing (custom vector graphics, precise glyph placement) | Flag surface is finite | [reportlab canvas](../pdf-tools.md#4-reportlab----pdf-generation) |
-| Custom AcroForm authoring from scratch (new fields, validation JS, appearance streams) | Only fill / flatten is exposed | [reportlab forms](../pdf-tools.md#4-reportlab----pdf-generation) |
-| Low-level XREF editing, object stream rewriting | Not a typical CLI use case | [PyMuPDF docs](../pdf-tools.md#1-pymupdf-fitz----pdf-read--edit--render) |
-| `NumberedCanvas` subclass pattern for "Page X of Y" totals | Requires Python class-level hook | [reportlab](../pdf-tools.md#4-reportlab----pdf-generation) |
-| Bespoke table-extraction heuristics (cluster-then-project) | Beyond the `--strategy` preset set | [pdfplumber](../pdf-tools.md#3-pdfplumber----pdf-data-extraction) |
+| Use case | Why `claw` can't do it |
+|---|---|
+| Freeform reportlab Canvas drawing (custom vector graphics, precise glyph placement) | Flag surface is finite |
+| Custom AcroForm authoring from scratch (new fields, validation JS, appearance streams) | Only fill / flatten is exposed |
+| Low-level XREF editing, object stream rewriting | Not a typical CLI use case |
+| `NumberedCanvas` subclass pattern for "Page X of Y" totals | Requires Python class-level hook |
+| Bespoke table-extraction heuristics (cluster-then-project) | Beyond the `--strategy` preset set |
+
+**PyMuPDF** — `pip install pymupdf` · [docs](https://pymupdf.readthedocs.io/)
+- Import is `import fitz`, not `import pymupdf` (legacy binding name; `pymupdf` module alias exists in newer versions but examples on the net use `fitz`).
+- Licensed **AGPL-3.0** — commercial closed-source deployments must either buy a commercial license or avoid PyMuPDF (use `pypdf` + `pdfplumber` + `reportlab`).
+- Coordinate origin is bottom-left (PDF convention); `claw pdf` normalises to top-left on input/output, so when hand-crafting `--boxes` JSON from raw PyMuPDF code you must flip `y' = page_height - y`.
+
+**PyPDF2 / pypdf** — `pip install pypdf` · [docs](https://pypdf.readthedocs.io/)
+- The package was renamed from `PyPDF2` to `pypdf` in 2022 — install `pypdf` and `import pypdf`; `PyPDF2` on PyPI still exists but is the frozen pre-rename version.
+- `reader.pages[i]` lazily parses — holding the reader open is cheap, but mutating via `writer.add_page(reader.pages[i])` clones references, so a later `reader.close()` can invalidate them.
+- AES-256 encryption requires `pip install pypdf[crypto]` (pulls in `cryptography`); without the extra, `writer.encrypt(algorithm="AES-256")` silently falls back to AES-128 on some versions.
+
+**pdfplumber** — `pip install pdfplumber` · [docs](https://github.com/jsvine/pdfplumber)
+- Built on `pdfminer.six`; table extraction is deterministic but extremely sensitive to `table_settings` — `{"vertical_strategy": "text", "horizontal_strategy": "lines"}` vs `"lines"`/`"text"` gives totally different row counts.
+- `page.extract_text()` returns text in *rendering order*, which is often not reading order for multi-column layouts; use `page.extract_text(layout=True)` or cluster by `page.chars` manually.
+- Scanned PDFs produce empty strings, not errors — run `claw pdf ocr` first if `len(text.strip()) == 0` for a page.
+
+**reportlab** — `pip install reportlab` · [docs](https://www.reportlab.com/docs/reportlab-userguide.pdf)
+- Coordinate origin is bottom-left and the unit is 1/72 inch; `from reportlab.lib.units import inch, cm, mm` — forgetting this is the classic "my text is 5 points from the bottom" bug.
+- `Canvas.showPage()` commits the current page and resets state (fonts, fills, transforms); forgetting it merges page N's content into page N+1.
+- Custom fonts must be registered via `pdfmetrics.registerFont(TTFont('Name', 'path.ttf'))` *before* the first `setFont` — registration after yields a silent fallback to Helvetica.
 
 ## Footguns
 

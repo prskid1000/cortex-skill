@@ -1,5 +1,7 @@
 # `claw convert` — Document Format Conversion
 
+> Source directory: [scripts/claw/src/claw/convert/](../../scripts/claw/src/claw/convert/)
+
 Canonical CLI reference for `claw convert ...`. Thin ergonomic wrapper over `pandoc` (plus PyMuPDF for the LaTeX-free PDF path). Covers the 80% of Markdown/Word/HTML/PDF/EPUB/slides conversions where you don't need to hand-tune a Lua filter.
 
 ## Contents
@@ -30,10 +32,13 @@ Canonical CLI reference for `claw convert ...`. Thin ergonomic wrapper over `pan
 5. **Exit codes.** `0` success, `2` bad args / unknown format, `3` input missing, `4` output exists without `--force`, `5` pandoc error (stderr surfaced), `7` missing PDF engine / LaTeX package — with actionable hint.
 6. **Self-documenting.** `claw convert --help` lists sub-verbs; `claw convert <verb> --help` prints the full flag table.
 7. **Pandoc flag passthrough.** Anything after `--` is forwarded to pandoc verbatim: `claw convert in.md out.pdf -- --variable geometry=a4paper,margin=2cm`.
+8. **Common output flags.** Every verb here inherits `--force`, `--backup`, `--dry-run`, `--json`, `--quiet`, `--mkdir` via the shared `@common_output_options` decorator; this doc only calls them out when the verb overrides the default. Run `claw convert <verb> --help` for the authoritative per-verb flag list.
 
 ---
 
 ## 1.1 convert
+
+> Source: [scripts/claw/src/claw/convert/convert.py](../../scripts/claw/src/claw/convert/convert.py)
 
 Simple any↔any conversion. Format dispatched by the output extension — `.md .docx .html .pdf .epub .rst .tex .odt .rtf .org .pptx .ipynb .typ` all work out of the box.
 
@@ -58,6 +63,8 @@ claw convert sheet.csv sheet.html --from csv        # CSV table → HTML
 ---
 
 ## 2.1 convert (with features)
+
+> Source: [scripts/claw/src/claw/convert/convert.py](../../scripts/claw/src/claw/convert/convert.py) (same verb as §1.1)
 
 Same `convert` verb, plus optional feature flags. Flags stack — enable only what you need.
 
@@ -86,8 +93,11 @@ claw convert <in> <out>
 | `--citeproc` | `--citeproc` | Enable citation processing |
 | `--bib` | `--bibliography=FILE` | BibTeX / BibLaTeX / CSL-JSON / RIS |
 | `--csl` | `--csl=FILE` | Citation Style Language stylesheet |
-| `--engine` | `--pdf-engine=ENGINE` | PDF backend — see Critical Rules and [§ PDF Engines](../conversion-tools.md#pdf-engines) |
+| `--engine` | `--pdf-engine=ENGINE` | PDF backend — see Critical Rules and [When `claw convert` isn't enough](#when-claw-convert-isnt-enough) |
 | `--highlight-style` | `--highlight-style=NAME` | Built-in: pygments, tango, kate, zenburn, breezedark, espresso, haddock, monochrome |
+| `--number-sections` | `--number-sections` | Prefix H1/H2/… with 1, 1.1, 1.2 |
+| `--metadata KEY=VAL` | `--metadata KEY=VAL` | Repeatable; overrides YAML frontmatter |
+| `--defaults FILE` | `--defaults=FILE` | Load a pandoc defaults YAML (see [pandoc docs](https://pandoc.org/MANUAL.html#default-files)) |
 
 ```
 # TOC + KaTeX math
@@ -106,6 +116,8 @@ claw convert post.md post.html --css style.css --embed-resources --standalone
 ---
 
 ## 3.1 convert book
+
+> Source: [scripts/claw/src/claw/convert/book.py](../../scripts/claw/src/claw/convert/book.py)
 
 Concatenate multiple Markdown chapters into a single output with shared metadata, TOC, and (optionally) bibliography.
 
@@ -133,6 +145,8 @@ claw convert book drafts/*.md --out manuscript.docx --ref-doc template.docx
 ---
 
 ## 4.1 convert md2pdf-nolatex
+
+> Source: [scripts/claw/src/claw/convert/md2pdf_nolatex.py](../../scripts/claw/src/claw/convert/md2pdf_nolatex.py)
 
 Markdown → PDF without needing a TeX distribution. Internally: `pandoc -t html5` with embedded CSS, then PyMuPDF's Story API renders the HTML to a paginated PDF. Trades fancy typography (ligatures, kerning) for zero install pain.
 
@@ -166,6 +180,8 @@ Don't use when:
 
 ## 5.1 convert slides
 
+> Source: [scripts/claw/src/claw/convert/slides.py](../../scripts/claw/src/claw/convert/slides.py)
+
 Markdown → slide deck in three flavors. Slide separation by `---` (horizontal rule) or heading level (`--slide-level N`, default `2`).
 
 ```
@@ -188,6 +204,8 @@ claw convert slides talk.md --format pptx --ref-doc brand.pptx --out talk.pptx
 
 ## 6.1 convert (meta)
 
+> Source: [scripts/claw/src/claw/convert/list_formats.py](../../scripts/claw/src/claw/convert/list_formats.py) (implements `--list-*-formats`)
+
 Discovery and defaults-file passthrough.
 
 ```
@@ -197,7 +215,7 @@ claw convert --list-extensions [FORMAT] [--json]
 claw convert --defaults <FILE.yaml>                # forward a Pandoc defaults YAML
 ```
 
-`--defaults FILE.yaml` shells out to `pandoc --defaults FILE.yaml` after basic schema validation. The defaults file itself is canonical Pandoc YAML — see [pandoc defaults files](../conversion-tools.md#defaults-files).
+`--defaults FILE.yaml` shells out to `pandoc --defaults FILE.yaml` after basic schema validation. The defaults file itself is canonical Pandoc YAML — see [pandoc defaults files](https://pandoc.org/MANUAL.html#defaults-files).
 
 ```
 claw convert --list-input-formats --json | jq '. | length'
@@ -224,15 +242,15 @@ The following belong in raw `pandoc`, not `claw convert`:
 - **Custom reader / writer authoring** (pandoc's Lua reader/writer API). Niche; use pandoc directly.
 - **Syntax highlighting theme authoring** (pandoc's `.theme` KDE files). Use the built-in names; override via raw pandoc for custom themes.
 
-## When `claw` isn't enough
+## When `claw convert` isn't enough
 
-Drop to the underlying tool and look at its reference:
+Drop to the underlying tool:
 
-- Full pandoc flag / extension / filter reference: [../conversion-tools.md](../conversion-tools.md).
-- PDF engines comparison: [../conversion-tools.md § PDF Engines](../conversion-tools.md#pdf-engines).
-- Markdown extension list: [../conversion-tools.md § Extensions System](../conversion-tools.md#extensions-system).
-
-Rule of thumb: if you need `--lua-filter`, multiple filters in order, or fine-tuned per-format behavior via a YAML defaults file — call `pandoc` directly (or use `claw convert ... -- <pandoc-flags>` for one-offs).
+**pandoc** — binary install (Windows: `scoop install pandoc` or MSI; macOS: `brew install pandoc`; Linux: distro pkg) · [docs](https://pandoc.org/MANUAL.html)
+- PDF output needs a LaTeX engine (`xelatex` / `lualatex` / `pdflatex`) or `weasyprint` / `typst` on PATH — `pandoc in.md -o out.pdf` silently fails with `pdflatex not found` unless you pass `--pdf-engine=<what-you-have>`.
+- On Windows, `pandoc.exe` works directly, but `--filter foo.lua` invokes `pandoc` recursively — which needs itself on PATH; scheduled-task launchers without full PATH inherit fail here.
+- `--reference-doc` (docx/pptx) is a *styled document whose styles are cloned*; `--template` (html/latex/etc.) is a *text template with `$variable$` placeholders* — passing the wrong one is a silent no-op, not an error.
+- Rule of thumb: if you need `--lua-filter`, multiple filters in order, or fine-tuned per-format behavior via a YAML defaults file — call `pandoc` directly (or use `claw convert ... -- <pandoc-flags>` for one-offs).
 
 ---
 

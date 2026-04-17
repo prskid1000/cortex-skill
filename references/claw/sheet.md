@@ -1,5 +1,7 @@
 # `claw sheet` — Google Drive Upload / Download / Share Reference
 
+> Source directory: [scripts/claw/src/claw/sheet/](../../scripts/claw/src/claw/sheet/)
+
 CLI wrapper over `gws drive`. Covers the 80% of Drive work that isn't spreadsheet-cell editing: uploading local files (with optional auto-convert to Google-native format), downloading Google-native files (via `files.export`) or binary uploads (via `files.get ... alt=media`), sharing, and listing.
 
 For per-cell `spreadsheets.values` work, fall through to [`gws sheets`](../gws-cli.md#sheets) — this wrapper deliberately doesn't try to re-invent sheet editing.
@@ -20,7 +22,7 @@ Library API for escape hatches: [references/gws-cli.md § Drive](../gws-cli.md#d
   - [Move between folders, duplicate, rename](#51-move) · [Copy](#52-copy) · [Rename](#53-rename)
 - **DELETE**
   - [Trash (recoverable) or permanent delete](#61-delete)
-- **When `claw sheet` isn't enough** — [escape hatches](#when-claw-isnt-enough)
+- **When `claw sheet` isn't enough** — [escape hatches](#when-claw-sheet-isnt-enough)
 
 ---
 
@@ -33,12 +35,15 @@ Library API for escape hatches: [references/gws-cli.md § Drive](../gws-cli.md#d
 5. **Exit codes** — `0` success, `1` generic, `2` usage error, `3` partial (one of N in a batch failed), `4` bad input / missing file, `5` API / auth / quota error, `130` SIGINT.
 6. **Help** — `claw sheet --help`, `claw sheet <verb> --help`, `--examples` prints runnable recipes, `--progress=json` streams per-chunk upload progress (Drive uses resumable upload for files >5 MB).
 7. **Content-type detection** — upload MIME type is detected via `mimetypes` with an override table for Office formats. Override with `--mime TYPE`. Unknown extensions default to `application/octet-stream`.
+8. **Common output flags** — every mutating verb inherits `--force`, `--backup`, `--dry-run`, `--json`, `--quiet`, `--mkdir` via the shared `@common_output_options` decorator. Individual verb blocks only call them out when the verb overrides the default; run `claw sheet <verb> --help` for the authoritative per-verb flag list.
 
 ---
 
 ## 1. UPLOAD
 
 ### 1.1 `upload`
+
+> Source: [scripts/claw/src/claw/sheet/upload.py](../../scripts/claw/src/claw/sheet/upload.py)
 
 Upload a local file to Drive. Auto-converts to Google-native format when the extension matches.
 
@@ -89,6 +94,8 @@ Output (with `--json`):
 
 ### 2.1 `download`
 
+> Source: [scripts/claw/src/claw/sheet/download.py](../../scripts/claw/src/claw/sheet/download.py)
+
 Save a Drive file to local disk. Dispatches `files.export` for Google-native files, `files.get ... alt=media` for binary uploads.
 
 ```
@@ -128,6 +135,8 @@ claw sheet download 1pdfId --out /tmp/copy.pdf
 
 ### 3.1 `share`
 
+> Source: [scripts/claw/src/claw/sheet/share.py](../../scripts/claw/src/claw/sheet/share.py)
+
 Grant permission on a file or folder. Exactly one of `--user` / `--domain` / `--anyone`.
 
 ```
@@ -161,6 +170,8 @@ claw sheet share 1xYz... --user new@example.com --role owner --transfer-ownershi
 
 ### 3.2 `share list`
 
+> Source: **NOT IMPLEMENTED** — no `sheet/share_list.py` exists.
+
 List current permissions on a file.
 
 ```
@@ -170,6 +181,8 @@ claw sheet share list <file-id> [--json]
 Output: `[{permission_id, role, type, email?, domain?}, ...]`.
 
 ### 3.3 `share revoke`
+
+> Source: **NOT IMPLEMENTED** — no `sheet/share_revoke.py` exists.
 
 Remove a permission by id (get ids from `share list`).
 
@@ -188,6 +201,8 @@ claw sheet share revoke 1xYz... 10abcPerm
 ## 4. LIST
 
 ### 4.1 `list`
+
+> Source: [scripts/claw/src/claw/sheet/list_.py](../../scripts/claw/src/claw/sheet/list_.py)
 
 List Drive files. Forwards to `gws drive files list --q` with sugar.
 
@@ -225,6 +240,8 @@ claw sheet list --query "modifiedTime > '2025-01-01' and trashed = false" --all
 
 ### 5.1 `move`
 
+> Source: **NOT IMPLEMENTED** — no `sheet/move.py` exists.
+
 Move a file between folders. Uses `files.update` with `addParents` / `removeParents`.
 
 ```
@@ -241,6 +258,8 @@ claw sheet move 1xYz... --to 1archiveFolder
 
 ### 5.2 `copy`
 
+> Source: **NOT IMPLEMENTED** — no `sheet/copy.py` exists.
+
 Duplicate a file (Drive-side; no download).
 
 ```
@@ -254,6 +273,8 @@ claw sheet copy 1xYz... --name "Copy of Report" --parent 1newFolder
 ```
 
 ### 5.3 `rename`
+
+> Source: **NOT IMPLEMENTED** — no `sheet/rename.py` exists.
 
 Shortcut for `files.update` with a new `name`.
 
@@ -272,6 +293,8 @@ claw sheet rename 1xYz... --name "Q3 Final"
 ## 6. DELETE
 
 ### 6.1 `delete`
+
+> Source: **NOT IMPLEMENTED** — no `sheet/delete.py` exists.
 
 Trash (recoverable, default) or permanently delete (flag-gated).
 

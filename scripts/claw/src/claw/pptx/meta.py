@@ -9,6 +9,29 @@ import click
 from claw.common import EXIT_INPUT, common_output_options, die, emit_json, safe_write
 
 
+PH_NAMES: dict[int, str] = {
+    0: "TITLE", 1: "BODY",
+    2: "CONTENT", 7: "PICTURE", 8: "CHART", 9: "TABLE",
+    10: "CLIP_ART", 11: "DIAGRAM", 12: "MEDIA_CLIP",
+    13: "TITLE", 14: "BODY", 15: "CENTER_TITLE", 16: "SUBTITLE",
+    17: "DATE", 18: "SLIDE_NUMBER", 19: "FOOTER", 20: "HEADER",
+}
+
+
+def _ph_type_name(ph) -> tuple[str, int | None]:
+    """Return ('TITLE', 13)-style tuple for a placeholder's type."""
+    fmt = ph.placeholder_format
+    ptype = fmt.type
+    if ptype is None:
+        return ("UNKNOWN", None)
+    try:
+        raw = int(ptype)
+    except (TypeError, ValueError):
+        name = getattr(ptype, "name", None) or str(ptype).rsplit(".", 1)[-1]
+        return (name, None)
+    return (PH_NAMES.get(raw, getattr(ptype, "name", str(raw))), raw)
+
+
 @click.group(name="meta")
 def meta() -> None:
     """Get or set core deck properties."""
@@ -38,13 +61,20 @@ def meta_get(src: Path, as_json: bool, layouts: bool) -> None:
     }
 
     if layouts:
-        info["layouts"] = [
-            {"index": i, "name": layout.name,
-             "placeholder_types": [ph.placeholder_format.type
-                                   and str(ph.placeholder_format.type)
-                                   for ph in layout.placeholders]}
-            for i, layout in enumerate(prs.slide_layouts)
-        ]
+        layout_rows = []
+        for i, layout in enumerate(prs.slide_layouts):
+            phs = []
+            for ph in layout.placeholders:
+                name, raw = _ph_type_name(ph)
+                phs.append({
+                    "idx": ph.placeholder_format.idx,
+                    "type": name,
+                    "name": ph.name,
+                    "placeholder_type_id": raw,
+                })
+            layout_rows.append({"index": i, "name": layout.name,
+                                "placeholders": phs})
+        info["layouts"] = layout_rows
 
     if as_json:
         emit_json(info)
@@ -54,6 +84,10 @@ def meta_get(src: Path, as_json: bool, layouts: bool) -> None:
                 click.echo("layouts:")
                 for layout in v:
                     click.echo(f"  {layout['index']}: {layout['name']}")
+                    for ph in layout["placeholders"]:
+                        click.echo(f"      idx={ph['idx']:<3} "
+                                   f"type={ph['type']:<14} "
+                                   f"name={ph['name']}")
             else:
                 click.echo(f"{k}: {v}")
 

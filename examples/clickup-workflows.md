@@ -2,7 +2,7 @@
 
 > Task management, sprints, comments, time tracking, and git integration from the terminal.
 
-**Reference:** [references/clickup-cli.md](../references/clickup-cli.md) · install via [setup.md](../references/setup.md#2-cli-tools)
+**Reference:** [references/clickup-cli.md](../references/clickup-cli.md) · install: `python scripts/healthcheck.py --install`
 
 ## Contents
 

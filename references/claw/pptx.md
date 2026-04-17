@@ -1,8 +1,10 @@
 # `claw pptx` — PowerPoint Operations Reference
 
+> Source directory: [scripts/claw/src/claw/pptx/](../../scripts/claw/src/claw/pptx/)
+
 CLI wrapper over `python-pptx` for deck authoring. Best paired with a brand template `.pptx`.
 
-Library API for escape hatches: [references/document-creation.md § python-pptx](../document-creation.md#3-python-pptx-powerpoint-pptx).
+Library API for escape hatches: see [When `claw pptx` Isn't Enough](#when-claw-pptx-isnt-enough).
 
 ## Contents
 
@@ -16,7 +18,7 @@ Library API for escape hatches: [references/document-creation.md § python-pptx]
   - [Refresh chart data](#41-chart-refresh)
 - **META**
   - [Core deck properties](#51-meta)
-- **When `claw pptx` isn't enough** — [python-pptx escape hatches](#when-claw-isnt-enough)
+- **When `claw pptx` isn't enough** — [python-pptx escape hatches](#when-claw-pptx-isnt-enough)
 
 ---
 
@@ -29,12 +31,15 @@ Library API for escape hatches: [references/document-creation.md § python-pptx]
 5. **Help** — `claw pptx --help`, `claw pptx <verb> --help`, `claw help pptx <verb>` alias, `--examples` for recipes.
 6. **Stream mode** — `--stream` is a no-op for `.pptx`. For decks &gt; 100 MB, use a slim template and append chunks in batches (`claw pptx add-slide` is O(1) per call).
 7. **Layout indices** — `--layout N` is 0-based against the master's layouts list. `claw pptx meta get --layouts` enumerates them.
+8. **Common output flags** — every mutating verb inherits `--force`, `--backup`, `--dry-run`, `--json`, `--quiet`, `--mkdir` via the shared `@common_output_options` decorator. Individual verb blocks only call them out when the verb overrides the default; run `claw pptx <verb> --help` for the authoritative per-verb flag list.
 
 ---
 
 ## 1. CREATE
 
 ### 1.1 `new`
+
+> Source: [scripts/claw/src/claw/pptx/new.py](../../scripts/claw/src/claw/pptx/new.py)
 
 Create a blank deck (default 16:9).
 
@@ -51,6 +56,8 @@ claw pptx new /tmp/deck.pptx --template ~/templates/brand.pptx --16:9
 ```
 
 ### 1.2 `from-outline`
+
+> Source: **NOT IMPLEMENTED** — no `pptx/from_outline.py` exists.
 
 Build a deck from a Markdown outline. `#` → title slide, `##` → new content slide with bullets.
 
@@ -72,6 +79,8 @@ claw pptx from-outline /tmp/kickoff.pptx --data agenda.md --template brand.pptx 
 
 ### 2.1 `add-slide`
 
+> Source: [scripts/claw/src/claw/pptx/add_slide.py](../../scripts/claw/src/claw/pptx/add_slide.py)
+
 Append a slide, optionally pre-populated.
 
 ```
@@ -90,6 +99,8 @@ claw pptx add-slide deck.pptx --layout 1 --title "Q3 Results" \
 
 ### 2.2 `add-chart`
 
+> Source: [scripts/claw/src/claw/pptx/add_chart.py](../../scripts/claw/src/claw/pptx/add_chart.py)
+
 Insert a native PPT chart populated from CSV.
 
 ```
@@ -106,6 +117,8 @@ claw pptx add-chart deck.pptx --slide 3 --type line --data trend.csv \
 
 ### 2.3 `add-table`
 
+> Source: [scripts/claw/src/claw/pptx/add_table.py](../../scripts/claw/src/claw/pptx/add_table.py)
+
 Insert a table from CSV / JSON.
 
 ```
@@ -121,6 +134,8 @@ claw pptx add-table deck.pptx --slide 4 --data stats.csv --header --at 1in,2in -
 
 ### 2.4 `add-image`
 
+> Source: [scripts/claw/src/claw/pptx/add_image.py](../../scripts/claw/src/claw/pptx/add_image.py)
+
 Insert a picture (inline) with optional aspect preservation.
 
 ```
@@ -134,6 +149,8 @@ claw pptx add-image deck.pptx --slide 2 --image /tmp/hero.png --at C --size 10in
 ```
 
 ### 2.5 `add-shape`
+
+> Source: **NOT IMPLEMENTED** — no `pptx/add_shape.py` exists.
 
 Draw a shape and optionally fill with text.
 
@@ -151,6 +168,8 @@ claw pptx add-shape deck.pptx --slide 5 --kind rounded-rect --at 1in,5in --size 
 
 ### 2.6 `reorder`
 
+> Source: [scripts/claw/src/claw/pptx/reorder.py](../../scripts/claw/src/claw/pptx/reorder.py)
+
 Reorder slides by 1-based index list.
 
 ```
@@ -164,6 +183,8 @@ claw pptx reorder deck.pptx --order 1,3,2,4,5
 ```
 
 ### 2.7 `fill`
+
+> Source: **NOT IMPLEMENTED** — no `pptx/fill.py` exists.
 
 Set the text of an existing placeholder on a slide.
 
@@ -185,6 +206,8 @@ claw pptx fill deck.pptx --slide 1 --placeholder 1 "Finance — April 2026"
 
 ### 3.1 `brand`
 
+> Source: [scripts/claw/src/claw/pptx/brand.py](../../scripts/claw/src/claw/pptx/brand.py)
+
 Bulk-apply brand elements (logo + accent colour) across all slides.
 
 ```
@@ -201,6 +224,8 @@ claw pptx brand deck.pptx --logo /tmp/logo.png --logo-at TR --accent "#336699"
 
 ### 3.2 `image crop`
 
+> Source: [scripts/claw/src/claw/pptx/image_crop.py](../../scripts/claw/src/claw/pptx/image_crop.py)
+
 Crop an image on a given slide by fractional left/right/top/bottom (0..1).
 
 ```
@@ -216,6 +241,8 @@ claw pptx image crop deck.pptx --slide 2 --shape-name Picture1 --left 0.1 --righ
 
 ### 3.3 `link add`
 
+> Source: [scripts/claw/src/claw/pptx/link.py](../../scripts/claw/src/claw/pptx/link.py)
+
 Attach a hyperlink to a text run or shape.
 
 ```
@@ -230,6 +257,8 @@ claw pptx link add deck.pptx --slide 3 --shape-name CallToAction --url https://e
 ```
 
 ### 3.4 `notes set`
+
+> Source: [scripts/claw/src/claw/pptx/notes.py](../../scripts/claw/src/claw/pptx/notes.py)
 
 Set (or clear) speaker notes on a slide.
 
@@ -249,6 +278,8 @@ claw pptx notes set deck.pptx --slide 3 --text "Mention the partnership terms."
 
 ### 4.1 `chart refresh`
 
+> Source: **NOT IMPLEMENTED** — no `pptx/chart_refresh.py` exists.
+
 Replace the data behind an existing native chart while preserving series formatting.
 
 ```
@@ -266,6 +297,8 @@ claw pptx chart refresh deck.pptx --slide 3 --csv trend-q4.csv
 ## 5. META
 
 ### 5.1 `meta`
+
+> Source: [scripts/claw/src/claw/pptx/meta.py](../../scripts/claw/src/claw/pptx/meta.py)
 
 ```
 claw pptx meta get <file.pptx> [--json] [--layouts]
@@ -286,15 +319,20 @@ claw pptx meta get brand.pptx --layouts --json
 
 ## When `claw pptx` Isn't Enough
 
-Use `python-pptx` directly — see [document-creation.md § python-pptx](../document-creation.md#3-python-pptx-powerpoint-pptx).
+Use `python-pptx` directly:
 
-| Use case | Why `claw` can't do it | Library anchor |
-|---|---|---|
-| Custom KPI dashboards with per-shape positioning DSLs | Flag surface can't express compound layouts | [Shapes](../document-creation.md#32-shapes) |
-| Master / layout authoring (new layouts, per-layout placeholders) | Author in PowerPoint, save as template | — |
-| Animations / transitions | Unsupported by `python-pptx` | — |
-| Embedded video / audio beyond basic insertion | Limited OLE support | [OLE embedding & media](../document-creation.md#39-ole-embedding--media) |
-| Gradient fills with multi-stop colour curves | Only simple solid / single-gradient via flags | [Fill & line formatting](../document-creation.md#35-fill--line-formatting) |
+| Use case | Why `claw` can't do it |
+|---|---|
+| Custom KPI dashboards with per-shape positioning DSLs | Flag surface can't express compound layouts |
+| Master / layout authoring (new layouts, per-layout placeholders) | Author in PowerPoint, save as template |
+| Animations / transitions | Unsupported by `python-pptx` |
+| Embedded video / audio beyond basic insertion | Limited OLE support |
+| Gradient fills with multi-stop colour curves | Only simple solid / single-gradient via flags |
+
+**python-pptx** — `pip install python-pptx` · [docs](https://python-pptx.readthedocs.io/)
+- All measurements are English Metric Units (914 400 per inch); use `from pptx.util import Inches, Pt, Emu` — passing raw ints as lengths silently gives you sub-pixel sized shapes.
+- Animations, transitions, and SmartArt are read-preserved but not writable; adding a slide from scratch strips any you touch with Python-level mutations.
+- `prs.slide_layouts[i]` indexes by layout *order in the master*, which is template-specific — iterate `layout.name` to find the right one, don't hardcode indices.
 
 ## Footguns
 

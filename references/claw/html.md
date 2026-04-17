@@ -1,8 +1,10 @@
 # `claw html` — HTML Select / Mutate / Clean Reference
 
+> Source directory: [scripts/claw/src/claw/html/](../../scripts/claw/src/claw/html/)
+
 CLI wrapper around BeautifulSoup4 (with `lxml` as parser). Every verb takes HTML on stdin or from a file and emits transformed HTML on stdout, so `claw html` composes well in shell pipelines.
 
-Library API for escape hatches: [references/web-parsing.md § BeautifulSoup4](../web-parsing.md#beautifulsoup4) and [§ lxml.html](../web-parsing.md#lxmlhtml).
+Library API for escape hatches: see [When `claw html` Isn't Enough](#when-claw-html-isnt-enough).
 
 ## Contents
 
@@ -18,7 +20,7 @@ Library API for escape hatches: [references/web-parsing.md § BeautifulSoup4](..
   - [Pretty-print with different formatters](#51-fmt)
 - **DIAGNOSE parser behavior**
   - [Compare parsers side-by-side](#61-diagnose)
-- **When `claw html` isn't enough** — [escape hatches](#when-claw-isnt-enough)
+- **When `claw html` isn't enough** — [escape hatches](#when-claw-html-isnt-enough)
 
 ---
 
@@ -32,12 +34,15 @@ Library API for escape hatches: [references/web-parsing.md § BeautifulSoup4](..
 6. **Help** — `claw html --help`, `claw html <verb> --help`, `--examples` prints runnable recipes.
 7. **Parser** — default is `lxml` (fast, lenient). Override with `--parser html.parser` (stdlib) or `--parser html5lib` (browser-faithful). See [§6.1 `diagnose`](#61-diagnose) to pick the right one.
 8. **Security** — `claw html sanitize` uses BeautifulSoup tree manipulation on an allow-list model, NOT `lxml.html.clean`. The latter is explicitly flagged by its maintainer as unsafe for untrusted HTML. For security-critical sanitization of attacker-controlled input, use `bleach` in Python directly — `claw html sanitize` is a convenience, not a security boundary.
+9. **Common output flags** — every mutating verb inherits `--force`, `--backup`, `--dry-run`, `--json`, `--quiet`, `--mkdir` via the shared `@common_output_options` decorator. Individual verb blocks only call them out when the verb overrides the default; run `claw html <verb> --help` for the authoritative per-verb flag list.
 
 ---
 
 ## 1. SELECT / QUERY
 
 ### 1.1 `select`
+
+> Source: [scripts/claw/src/claw/html/select.py](../../scripts/claw/src/claw/html/select.py)
 
 Query the tree with CSS or XPath (htmlq-style).
 
@@ -74,6 +79,8 @@ claw html select page.html --xpath "//meta[@property='og:image']/@content"
 
 ### 1.2 `text`
 
+> Source: [scripts/claw/src/claw/html/text.py](../../scripts/claw/src/claw/html/text.py)
+
 Extract flattened text content from an entire document or a subtree.
 
 ```
@@ -103,6 +110,8 @@ claw html text page.html --css "main" --sep " " --strip
 
 ### 2.1 `strip`
 
+> Source: [scripts/claw/src/claw/html/strip.py](../../scripts/claw/src/claw/html/strip.py)
+
 Remove matched elements from the tree (`decompose()`). Keeps the rest of the document.
 
 ```
@@ -126,6 +135,8 @@ claw web fetch URL --out - | claw html strip - --css "script,style" | claw html 
 
 ### 2.2 `unwrap`
 
+> Source: **NOT IMPLEMENTED** — no `html/unwrap.py` exists.
+
 Replace matched elements with their children (keeps content, removes the wrapper tag).
 
 ```
@@ -142,6 +153,8 @@ claw html unwrap page.html --css "span.marker,font" --out clean.html
 ```
 
 ### 2.3 `wrap`
+
+> Source: **NOT IMPLEMENTED** — no `html/wrap.py` exists.
 
 Wrap each matched element in a new parent.
 
@@ -161,6 +174,8 @@ claw html wrap doc.html --css "table" --with "div.scroll-x" --out doc-responsive
 ```
 
 ### 2.4 `replace`
+
+> Source: **NOT IMPLEMENTED** — no `html/replace.py` exists.
 
 Replace matched elements with new text or HTML.
 
@@ -185,6 +200,8 @@ claw html replace template.html --css "#body" --with-file rendered-body.html
 ## 3. SANITIZE
 
 ### 3.1 `sanitize`
+
+> Source: [scripts/claw/src/claw/html/sanitize.py](../../scripts/claw/src/claw/html/sanitize.py)
 
 Allow-list-based cleanup. Default ruleset removes `<script>`, `<style>`, `<iframe>`, `<object>`, `<embed>`, inline event handlers, and `javascript:` URLs.
 
@@ -221,6 +238,8 @@ claw html sanitize scraped.html --remove scripts,iframes,forms --out clean.html
 
 ### 4.1 `absolutize`
 
+> Source: [scripts/claw/src/claw/html/absolutize.py](../../scripts/claw/src/claw/html/absolutize.py)
+
 Resolve relative links against a base URL.
 
 ```
@@ -238,6 +257,8 @@ claw html absolutize scraped.html --base https://example.com/docs/ \
 ```
 
 ### 4.2 `rewrite`
+
+> Source: **NOT IMPLEMENTED** — no `html/rewrite.py` exists.
 
 Find-and-replace URL substrings across link-bearing attributes.
 
@@ -257,6 +278,8 @@ claw html rewrite page.html --from "http://old.example.com" --to "https://new.ex
 ## 5. FORMAT
 
 ### 5.1 `fmt`
+
+> Source: [scripts/claw/src/claw/html/fmt.py](../../scripts/claw/src/claw/html/fmt.py)
 
 Pretty-print the HTML.
 
@@ -284,6 +307,8 @@ claw html fmt messy.html --formatter html5 --indent 4 --out clean.html
 
 ### 6.1 `diagnose`
 
+> Source: **NOT IMPLEMENTED** — no `html/diagnose.py` exists.
+
 Show how each installed parser interprets the document. Useful when `lxml` and `html5lib` disagree (fragile markup).
 
 ```
@@ -304,15 +329,33 @@ claw html diagnose suspicious.html | less
 
 Drop into BeautifulSoup / lxml directly:
 
-| Use case | Why `claw` can't do it | Library anchor |
-|---|---|---|
-| Complex tree walks (conditional mutation based on siblings / ancestors) | CLI flag surface can't express control flow | [web-parsing.md § BeautifulSoup4 Navigation](../web-parsing.md#navigation) |
-| Custom parser with `SoupStrainer` for memory-bounded scraping | No flag to configure parse filter | [web-parsing.md § SoupStrainer](../web-parsing.md#soupstrainer-partial-parsing) |
-| HTML diff / annotate | Out of scope | [web-parsing.md § HTML diff](../web-parsing.md#html-diff) |
-| Form filling via `lxml.html` | Not wrapped | [web-parsing.md § Forms](../web-parsing.md#forms) |
-| Multi-valued attribute control | Fixed default | [web-parsing.md § Multi-valued Attributes](../web-parsing.md#multi-valued-attributes) |
-| Production-grade XSS sanitization of user input | `sanitize` is convenience, not a security boundary | Use `bleach` (allow-list-based, maintained for security) directly |
-| iterparse-style streaming | BeautifulSoup loads the whole tree | [web-parsing.md § iterparse](../web-parsing.md#iterparse-streaming) on `lxml` |
+| Use case | Why `claw` can't do it |
+|---|---|
+| Complex tree walks (conditional mutation based on siblings / ancestors) | CLI flag surface can't express control flow |
+| Custom parser with `SoupStrainer` for memory-bounded scraping | No flag to configure parse filter |
+| HTML diff / annotate | Out of scope |
+| Form filling via `lxml.html` | Not wrapped |
+| Multi-valued attribute control | Fixed default |
+| Production-grade XSS sanitization of user input | `sanitize` is convenience, not a security boundary — use `bleach` |
+| iterparse-style streaming | BeautifulSoup loads the whole tree — use `lxml.etree.iterparse` |
+
+**lxml** — `pip install lxml` · [docs](https://lxml.de/)
+- Wheels ship `libxml2` / `libxslt` bundled; on Linux ARM or 3.13-preview environments wheels may be missing and `pip install lxml` triggers a source build that needs `libxml2-dev` / `libxslt-dev`.
+- Default parser rejects documents with excessive depth (`huge_tree=False`) as a DoS guard — trusted pathological XML needs `etree.XMLParser(huge_tree=True)`.
+- Do NOT pass `resolve_entities=True` on attacker-controlled XML (billion-laughs, XXE file disclosure); `claw xml` defaults it off.
+
+**lxml.html** — part of `lxml` · [docs](https://lxml.de/lxmlhtml.html)
+- `lxml.html.fromstring(s)` wraps a fragment in `<html><body>` if the document isn't a full page — subsequent serialization gives you a wrapped fragment back, not your original bytes. Use `lxml.html.fragment_fromstring(s, create_parent=...)` for fragments.
+- Forms API (`form.fields`, `form.submit_values()`) only works with the `lxml.html` parser, not the default `etree` parse.
+
+**BeautifulSoup4** — `pip install beautifulsoup4` · [docs](https://www.crummy.com/software/BeautifulSoup/bs4/doc/)
+- Specify the parser explicitly (`BeautifulSoup(html, "lxml")` or `"html5lib"` or `"html.parser"`) — the default changes by Python/BS4 version, and tree-walks depend on the parser's whitespace handling.
+- `tag.decompose()` leaves a zombie Python reference that explodes later; never hold a variable to a tag you've decomposed. `claw html` uses functional transforms specifically to sidestep this.
+- `soup.find_all("a", limit=1)` is slower than `soup.find("a")` — `find_all` builds the full list, `find` short-circuits.
+
+**trafilatura** — `pip install trafilatura` · [docs](https://trafilatura.readthedocs.io/)
+- Optimized for news/article extraction; gives up silently on login walls, single-page apps (empty `<body>`), and paginated tables. Output `None` means "no main text detected."
+- `extract(html, favor_precision=True)` vs `favor_recall=True` changes boilerplate retention drastically — tune per-site.
 
 ## Footguns
 

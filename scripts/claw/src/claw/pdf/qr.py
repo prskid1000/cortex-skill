@@ -6,7 +6,7 @@ from pathlib import Path
 
 import click
 
-from claw.common import common_output_options, die, emit_json, safe_write
+from claw.common import EXIT_INPUT, common_output_options, die, emit_json, safe_write
 
 
 PAGE_SIZES = ("Letter", "A4", "Legal")
@@ -47,7 +47,13 @@ def qr(value: str, out: Path, size: float, ec: str, page_size: str,
     img.save(img_buf, format="PNG")
     img_buf.seek(0)
 
-    page = getattr(pagesizes, page_size)
+    # reportlab exposes mixed case: A4 upper; letter/legal lower; LETTER/LEGAL upper.
+    # Try upper → lower → title; die cleanly if none match.
+    page = (getattr(pagesizes, page_size.upper(), None)
+            or getattr(pagesizes, page_size.lower(), None)
+            or getattr(pagesizes, page_size, None))
+    if page is None:
+        die(f"unknown page size: {page_size}", code=EXIT_INPUT)
 
     if dry_run:
         click.echo(f"would write QR ({value!r}) → {out}")

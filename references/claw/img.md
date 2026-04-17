@@ -1,5 +1,7 @@
 # `claw img` — Image Operations
 
+> Source directory: [scripts/claw/src/claw/img/](../../scripts/claw/src/claw/img/)
+
 Canonical CLI reference for `claw img ...`. Thin ergonomic wrapper over Pillow + ImageMagick. For anything below the one-line-wrap threshold — drop to `magick` directly.
 
 ## Contents
@@ -31,10 +33,13 @@ Canonical CLI reference for `claw img ...`. Thin ergonomic wrapper over Pillow +
 6. **Streaming for giant batches.** `--stream` makes mutating verbs emit one line of JSON per processed file (usable with `jq` / `xargs`); without it, they buffer until end.
 7. **Resample defaults.** Downscales default to `LANCZOS`; upscales to `BICUBIC`. Override with `--resample nearest|bilinear|bicubic|lanczos` when you know better.
 8. **ICC profiles are stripped by default** to avoid surprise color shifts on color-managed targets. Pass `--preserve-icc` to keep them; `exif strip` preserves ICC unless `--strip-icc` is also set.
+9. **Common output flags.** Every mutating verb inherits `--force`, `--backup`, `--dry-run`, `--json`, `--quiet`, `--mkdir` via the shared `@common_output_options` decorator. Individual verb blocks only call them out when the verb overrides the default; run `claw img <verb> --help` for the authoritative per-verb flag list.
 
 ---
 
 ## 1.1 resize
+
+> Source: [scripts/claw/src/claw/img/resize.py](../../scripts/claw/src/claw/img/resize.py)
 
 Scale an image using ImageMagick geometry. One-shot; no aspect-ratio inference gymnastics.
 
@@ -58,6 +63,8 @@ claw img resize logo.svg --geometry 256x256! --out logo-256.png        # force e
 
 ## 1.2 fit
 
+> Source: [scripts/claw/src/claw/img/fit.py](../../scripts/claw/src/claw/img/fit.py)
+
 Crop-to-fill using `PIL.ImageOps.fit` — image is scaled then cropped so both dimensions exactly match `--size`. Use for thumbnails that must be a precise shape.
 
 ```
@@ -76,6 +83,8 @@ claw img fit portrait.jpg --size 400x400 --center 0.5,0.3 --out avatar.jpg
 ---
 
 ## 1.3 pad
+
+> Source: [scripts/claw/src/claw/img/pad.py](../../scripts/claw/src/claw/img/pad.py)
 
 Letterbox to a target canvas — image preserved at max size that fits, remainder filled with `--color`.
 
@@ -96,6 +105,8 @@ claw img pad 9x16.jpg --size 1920x1080 --color '#111111' --out 16x9-padded.jpg
 
 ## 1.4 thumb
 
+> Source: [scripts/claw/src/claw/img/thumb.py](../../scripts/claw/src/claw/img/thumb.py)
+
 Fast thumbnail for feed/grid use. Calls `Image.thumbnail(size, LANCZOS)`, applies `ImageOps.exif_transpose` (honors EXIF rotation), and enables JPEG `draft` mode to skip full decode on huge inputs.
 
 ```
@@ -115,6 +126,8 @@ claw img thumb raw-12mp.jpg --max 512 --out thumb.jpg
 
 ## 1.5 crop
 
+> Source: [scripts/claw/src/claw/img/crop.py](../../scripts/claw/src/claw/img/crop.py)
+
 Crop an explicit pixel box.
 
 ```
@@ -128,6 +141,8 @@ claw img crop screenshot.png --box 100,200,800,600 --out region.png
 ---
 
 ## 2.1 enhance
+
+> Source: [scripts/claw/src/claw/img/enhance.py](../../scripts/claw/src/claw/img/enhance.py)
 
 Tonal corrections via `ImageOps`. Flags are independent; pass any combination.
 
@@ -151,6 +166,8 @@ claw img enhance scan.jpg --autocontrast --cutoff 1 --out scan-clean.jpg
 
 ## 2.2 sharpen
 
+> Source: [scripts/claw/src/claw/img/sharpen.py](../../scripts/claw/src/claw/img/sharpen.py)
+
 Unsharp mask — the only sharpen worth shipping. Wraps `ImageFilter.UnsharpMask(radius, percent, threshold)`.
 
 ```
@@ -170,6 +187,8 @@ claw img sharpen portrait.jpg --radius 1.5 --amount 120 --threshold 2 --out port
 ---
 
 ## 3.1 composite
+
+> Source: [scripts/claw/src/claw/img/composite.py](../../scripts/claw/src/claw/img/composite.py)
 
 Alpha-correct compositing. `--bg` and `--fg` can be files or hex colors; `--at x,y` positions the foreground.
 
@@ -192,6 +211,8 @@ claw img composite --bg card.png --fg stamp.png --at 40,40 --out stamped.png
 
 ## 3.2 watermark
 
+> Source: [scripts/claw/src/claw/img/watermark.py](../../scripts/claw/src/claw/img/watermark.py)
+
 Stamp text or a logo across the image. Position is a corner code: `TL|TC|TR|CL|CC|CR|BL|BC|BR`.
 
 ```
@@ -207,6 +228,8 @@ claw img watermark slide.png --image logo.png --position TR --out slide-branded.
 
 ## 3.3 overlay
 
+> Source: [scripts/claw/src/claw/img/overlay.py](../../scripts/claw/src/claw/img/overlay.py)
+
 Logo-on-corner helper — scales the logo to a fraction of the base image's shortest edge and pastes with alpha.
 
 ```
@@ -220,6 +243,8 @@ claw img overlay hero.jpg --logo brand.png --scale 0.12 --position BL --out hero
 ---
 
 ## 4.1 convert
+
+> Source: [scripts/claw/src/claw/img/convert_.py](../../scripts/claw/src/claw/img/convert_.py)
 
 Format translation dispatched by `<out>` extension. No transforms; use `resize`/`fit`/`enhance` for those. Preserves EXIF unless `--strip-exif`.
 
@@ -238,6 +263,8 @@ claw img convert screenshot.png screenshot.pdf
 
 ## 4.2 to-jpeg
 
+> Source: [scripts/claw/src/claw/img/to_jpeg.py](../../scripts/claw/src/claw/img/to_jpeg.py)
+
 Alpha-safe JPEG flatten — transparent pixels are composited onto `--bg` before encode. Prevents the silent black-background footgun.
 
 ```
@@ -251,6 +278,8 @@ claw img to-jpeg screenshot.png --bg white --out screenshot.jpg
 ---
 
 ## 4.3 to-webp
+
+> Source: [scripts/claw/src/claw/img/to_webp.py](../../scripts/claw/src/claw/img/to_webp.py)
 
 ```
 claw img to-webp <in> --out <out.webp> [--quality 85] [--lossless] [--animated] [--method 6]
@@ -271,6 +300,8 @@ claw img to-webp spin.gif --animated --out spin.webp
 
 ## 5.1 exif
 
+> Source: [scripts/claw/src/claw/img/exif.py](../../scripts/claw/src/claw/img/exif.py)
+
 Three sub-verbs: read, strip, auto-rotate.
 
 ```
@@ -288,6 +319,8 @@ claw img exif auto-rotate phone-pic.jpg --out upright.jpg
 ---
 
 ## 5.2 rename
+
+> Source: [scripts/claw/src/claw/img/rename.py](../../scripts/claw/src/claw/img/rename.py)
 
 Rename files by a token template sourced from EXIF. Tokens use `exiftool` syntax — `{Tag[:format]}`. `{seq}` is a zero-padded collision-safe counter.
 
@@ -307,6 +340,8 @@ claw img rename vacation/*.NEF --template '{CreateDate:%Y-%m-%d}/IMG_{seq:04}.{e
 ---
 
 ## 6.1 batch
+
+> Source: [scripts/claw/src/claw/img/batch.py](../../scripts/claw/src/claw/img/batch.py)
 
 Run an op chain on every image matching a directory glob. Op chain syntax: `op1:arg1|op2:arg2|...`. Ops: `resize:GEOM`, `fit:WxH`, `thumb:MAX`, `sharpen[:radius,amount,threshold]`, `strip`, `autocontrast`, `jpeg:QUALITY`, `webp:QUALITY`, `png`, `rotate:AUTO`.
 
@@ -329,6 +364,8 @@ claw img batch ./ --op 'rotate:auto|webp:90' --backup --stream
 ---
 
 ## 7.1 gif-from-frames
+
+> Source: [scripts/claw/src/claw/img/gif_from_frames.py](../../scripts/claw/src/claw/img/gif_from_frames.py)
 
 Make an animated GIF from a directory of frames (lexicographically sorted).
 
@@ -366,14 +403,19 @@ The following belong in raw `magick`, not `claw img`:
 - **Per-channel math** (`magick in.png -channel R -evaluate multiply 0.9 +channel out.png`). Raw magick is the right interface.
 - **Multi-image mathematical ops across frames** (sequence-level composite, stereographic projections). Niche; use `magick`.
 
-## When `claw` isn't enough
+## When `claw img` isn't enough
 
-Drop to the underlying tool and look at its reference:
+Drop to the underlying tool:
 
-- Pillow Python API for anything algorithmic: [../media-tools.md § 1. Pillow](../media-tools.md#1-pillow-pil----python-image-manipulation).
-- ImageMagick CLI for filter chains / morphology / distortions: [../media-tools.md § 2. ImageMagick](../media-tools.md#21-core-cli-tools).
+**Pillow** — `pip install Pillow` · [docs](https://pillow.readthedocs.io/)
+- Import is `from PIL import Image`; the package is `Pillow` but the module is `PIL` (legacy fork-rename).
+- `Image.open()` is lazy — `img.size` works but pixel access (`img.load()`, `.crop()`, `.save()`) is where it actually reads bytes. A `FileNotFoundError` can surface on the `.save()` line, not `open()`.
+- Transparent PNGs saved as JPEG silently flatten to black background — composite onto `Image.new("RGB", img.size, "white")` before `.save("x.jpg")` or use `claw img to-jpeg --bg white`.
 
-Rule of thumb: if you find yourself reaching for `--extra-magick-args '...'` — skip `claw` entirely for that call.
+**ImageMagick** — binary install (Windows: `scoop install imagemagick`; macOS: `brew install imagemagick`; Linux: distro pkg) · [docs](https://imagemagick.org/script/command-line-options.php)
+- On Windows, the CLI is `magick.cmd` (and `magick convert.cmd`) — resolve with `shutil.which("magick")` before `subprocess.run`, since `subprocess` doesn't auto-expand `.cmd` shims.
+- ImageMagick 7 uses `magick ...` as the single entry point; `convert` on a box with IM6 installed is a *different* binary (and on modern Windows PATH, can be the built-in `convert.exe` disk-converter — disaster).
+- `-resize 100x100` preserves aspect; `-resize 100x100!` (with `!`) ignores it. The `!` gets eaten by `bash` without quoting — always quote geometry strings.
 
 ---
 

@@ -16,9 +16,11 @@ from claw.common import EXIT_SYSTEM, common_output_options, die, emit_json, gws_
 @click.option("--parent", default=None, help="Drive folder ID.")
 @click.option("--share", "shares", multiple=True,
               help="ACL spec: user:EMAIL:role | domain:DOMAIN:role | anyone:role")
+@click.option("--notify/--no-notify", "notify", default=False,
+              help="Send notification email on user-type shares (default: no).")
 @click.option("--tab", "tab_id", default=None)
 @common_output_options
-def create(title, source, parent, shares, tab_id,
+def create(title, source, parent, shares, notify, tab_id,
            force, backup, as_json, dry_run, quiet, verbose, mkdir) -> None:
     """Create a new Google Doc."""
     if dry_run:
@@ -44,19 +46,32 @@ def create(title, source, parent, shares, tab_id,
         if mv.returncode != 0 and verbose:
             click.echo(f"move warning: {mv.stderr.strip()}", err=True)
 
-    for spec in shares:
-        payload = _parse_share(spec)
-        if payload is None:
-            click.echo(f"bad --share: {spec}", err=True)
-            continue
-        params = {"fileId": doc_id}
-        if payload.get("role") == "owner":
-            params["transferOwnership"] = True
-        sh = gws_run("drive", "permissions", "create",
-                     "--params", json.dumps(params),
-                     "--json", json.dumps(payload))
-        if sh.returncode != 0 and verbose:
-            click.echo(f"share warning: {sh.stderr.strip()}", err=True)
+    if shares:
+        from click.testing import CliRunner
+        from claw.sheet.share import share as share_cmd
+        runner = CliRunner()
+        for spec in shares:
+            parsed = _parse_share(spec)
+            if parsed is None:
+                click.echo(f"warning: bad --share: {spec}", err=True)
+                continue
+            argv: list[str] = [doc_id, "--role", parsed["role"]]
+            if parsed["type"] == "user":
+                argv += ["--user", parsed["emailAddress"]]
+            elif parsed["type"] == "domain":
+                argv += ["--domain", parsed["domain"]]
+            else:
+                argv += ["--anyone"]
+            argv += ["--notify"] if notify else ["--no-notify"]
+            if parsed["role"] == "owner":
+                argv += ["--transfer-ownership"]
+            result = runner.invoke(share_cmd, argv, standalone_mode=False)
+            if result.exit_code != 0:
+                click.echo(
+                    f"warning: share failed for {spec}: "
+                    f"{(result.output or str(result.exception)).strip()}",
+                    err=True,
+                )
 
     if source:
         from claw.doc.build import _build_and_dispatch  # late import
@@ -74,9 +89,9 @@ def create(title, source, parent, shares, tab_id,
 def _parse_share(spec: str) -> dict | None:
     parts = spec.split(":")
     if parts[0] == "user" and len(parts) == 3:
-        return {"role": parts[2], "type": "user", "emailAddress": parts[1]}
+        return {"type": "user", "emailAddress": parts[1], "role": parts[2]}
     if parts[0] == "domain" and len(parts) == 3:
-        return {"role": parts[2], "type": "domain", "domain": parts[1]}
+        return {"type": "domain", "domain": parts[1], "role": parts[2]}
     if parts[0] == "anyone" and len(parts) == 2:
-        return {"role": parts[1], "type": "anyone"}
+        return {"type": "anyone", "role": parts[1]}
     return None

@@ -1,8 +1,10 @@
 """claw pipeline run — execute a YAML recipe as a DAG."""
 from __future__ import annotations
 
+import ast
 import hashlib
 import json
+import operator
 import os
 import re
 import subprocess
@@ -18,6 +20,73 @@ from claw.common import (
     EXIT_INPUT, EXIT_PARTIAL, EXIT_SYSTEM, EXIT_USAGE,
     common_output_options, die, emit_json,
 )
+
+
+_WHEN_CMP = {
+    ast.Eq: operator.eq, ast.NotEq: operator.ne,
+    ast.Lt: operator.lt, ast.LtE: operator.le,
+    ast.Gt: operator.gt, ast.GtE: operator.ge,
+    ast.In: lambda a, b: a in b, ast.NotIn: lambda a, b: a not in b,
+    ast.Is: operator.is_, ast.IsNot: operator.is_not,
+}
+_WHEN_BOOL = {ast.And: all, ast.Or: any}
+_WHEN_UNARY = {ast.Not: operator.not_, ast.USub: operator.neg, ast.UAdd: operator.pos}
+
+
+def _eval_when(expr: str, ctx: dict[str, Any]) -> bool:
+    """Evaluate a `when:` expression against a restricted namespace.
+
+    Supported: literals, bool-ops, comparisons, unary, names (`vars`, `env`, `steps`),
+    attribute + item access over those. No calls, no imports, no names beyond the above.
+    """
+    resolved = _interpolate(expr, ctx) if "${" in expr else expr
+    tree = ast.parse(resolved, mode="eval")
+
+    env_ns = {"vars": ctx.get("vars", {}),
+              "steps": ctx.get("steps", {}),
+              "env": dict(os.environ)}
+
+    def walk(node: ast.AST) -> Any:
+        if isinstance(node, ast.Expression):
+            return walk(node.body)
+        if isinstance(node, ast.Constant):
+            return node.value
+        if isinstance(node, ast.Name):
+            if node.id in env_ns:
+                return env_ns[node.id]
+            raise ValueError(f"unknown name in when: {node.id!r}")
+        if isinstance(node, ast.Attribute):
+            base = walk(node.value)
+            if isinstance(base, dict):
+                return base.get(node.attr)
+            return getattr(base, node.attr, None)
+        if isinstance(node, ast.Subscript):
+            base = walk(node.value)
+            key = walk(node.slice)
+            try:
+                return base[key]
+            except (KeyError, IndexError, TypeError):
+                return None
+        if isinstance(node, ast.BoolOp):
+            fn = _WHEN_BOOL[type(node.op)]
+            return fn(walk(v) for v in node.values)
+        if isinstance(node, ast.UnaryOp):
+            return _WHEN_UNARY[type(node.op)](walk(node.operand))
+        if isinstance(node, ast.Compare):
+            left = walk(node.left)
+            for op, right_node in zip(node.ops, node.comparators):
+                right = walk(right_node)
+                if not _WHEN_CMP[type(op)](left, right):
+                    return False
+                left = right
+            return True
+        if isinstance(node, ast.Set):
+            return {walk(e) for e in node.elts}
+        if isinstance(node, (ast.List, ast.Tuple)):
+            return [walk(e) for e in node.elts]
+        raise ValueError(f"unsupported when: node {type(node).__name__}")
+
+    return bool(walk(tree))
 
 
 _INTERP = re.compile(r"\$\{([^}]+)\}")
@@ -123,10 +192,23 @@ def _run_step(step: dict, ctx: dict, recipe_name: str, dry_run: bool,
               progress_fp, verbose: bool) -> tuple[int, dict]:
     step_id = step["id"]
     resolved_args = _interpolate(step.get("args", {}) or {}, ctx)
-    cache_enabled = step.get("cache", True) is not False and step["run"] not in ("shell", "python")
+
+    cache_mode = step.get("cache", True)
+    if cache_mode is False or step["run"] in ("shell", "python"):
+        inputs_only = False
+        cache_enabled = False
+    elif cache_mode == "inputs-only":
+        inputs_only = True
+        cache_enabled = True
+    else:
+        inputs_only = False
+        cache_enabled = True
+
     cache_key = _step_cache_key(step, resolved_args, recipe_name) if cache_enabled else None
     cache_dir = _cache_root() / cache_key[:2] / cache_key if cache_key else None
-    if cache_dir and (cache_dir / "record.json").exists() and ctx.get("resume"):
+
+    if (not inputs_only and cache_dir and (cache_dir / "record.json").exists()
+            and ctx.get("resume")):
         _emit_progress(progress_fp, "step_skip_cached", id=step_id)
         record = json.loads((cache_dir / "record.json").read_text())
         return 0, record
@@ -274,21 +356,57 @@ def run(recipe: Path, jobs: int | None, resume: bool, from_step: str | None,
     failed: set[str] = set()
     skipped: set[str] = set()
     overall_exit = 0
+    stop_requested = False
+
+    def _mark_dep_failed(node: str) -> None:
+        skipped.add(node)
+        remaining.discard(node)
+        _emit_progress(progress_fp, "step_skip_dep_failed", id=node)
 
     try:
         while remaining or running:
+            if stop_requested:
+                for n in sorted(remaining, key=lambda x: topo.index(x)):
+                    _mark_dep_failed(n)
+                remaining.clear()
+                break
+
             ready = [n for n in list(remaining)
                      if n not in running
                      and all(pred in ctx["steps"] or pred in failed or pred in skipped
                              for pred in g.predecessors(n))]
             for n in ready:
                 step = step_map[n]
-                deps_failed = any(p in failed for p in g.predecessors(n))
-                if deps_failed and step.get("on-error", "stop") != "continue":
-                    skipped.add(n)
-                    remaining.discard(n)
-                    _emit_progress(progress_fp, "step_skip_dep_failed", id=n)
+                deps_failed_nodes = [p for p in g.predecessors(n) if p in failed]
+                deps_skipped_nodes = [p for p in g.predecessors(n) if p in skipped]
+
+                if deps_skipped_nodes:
+                    _mark_dep_failed(n)
                     continue
+
+                if deps_failed_nodes:
+                    remaining.discard(n)
+                    _mark_dep_failed(n)
+                    continue
+
+                when_expr = step.get("when")
+                if when_expr:
+                    try:
+                        ok = _eval_when(str(when_expr), ctx)
+                    except Exception as e:
+                        remaining.discard(n)
+                        failed.add(n)
+                        overall_exit = max(overall_exit, EXIT_INPUT)
+                        _emit_progress(progress_fp, "step_fail", id=n,
+                                       error=f"when eval failed: {e}")
+                        continue
+                    if not ok:
+                        remaining.discard(n)
+                        skipped.add(n)
+                        _emit_progress(progress_fp, "step_skip_when", id=n,
+                                       expr=str(when_expr))
+                        continue
+
                 remaining.discard(n)
                 fut = executor.submit(_run_step, step, ctx, name, False, progress_fp, verbose)
                 running[n] = fut
@@ -307,15 +425,17 @@ def run(recipe: Path, jobs: int | None, resume: bool, from_step: str | None,
                 else:
                     policy = step.get("on-error", "stop")
                     overall_exit = max(overall_exit, rc if rc else 1)
+                    failed.add(n)
                     if policy == "stop":
-                        failed.add(n)
-                        remaining.clear()
+                        stop_requested = True
                         break
                     elif policy == "skip":
-                        failed.add(n)
+                        descendants = nx.descendants(g, n)
+                        for d in descendants:
+                            if d in remaining:
+                                _mark_dep_failed(d)
                         overall_exit = max(overall_exit, EXIT_PARTIAL)
                     elif policy == "continue":
-                        ctx["steps"][n] = record
                         overall_exit = max(overall_exit, EXIT_PARTIAL)
     finally:
         executor.shutdown(wait=True)

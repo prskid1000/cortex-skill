@@ -35,13 +35,27 @@ def _table_to_rows(table) -> list[list[str]]:
     return rows
 
 
+def _rows_to_records(rows: list[list[str]], header_mode: str) -> list[dict[str, str]] | list[list[str]]:
+    if header_mode == "first-row" and rows:
+        cols = rows[0]
+        return [dict(zip(cols, r)) for r in rows[1:]]
+    return rows
+
+
+def _rows_to_csv_string(rows: list[list[str]]) -> str:
+    import csv, io
+    buf = io.StringIO()
+    csv.writer(buf).writerows(rows)
+    return buf.getvalue()
+
+
 @click.command(name="table")
 @click.argument("src")
 @click.option("--selector", default=None, help="CSS selector narrowing which table(s).")
 @click.option("--index", default=None, type=int, help="1-based table index.")
-@click.option("--all", "all_tables", is_flag=True, help="Emit every table (xlsx only).")
+@click.option("--all", "all_tables", is_flag=True, help="Emit every table.")
 @click.option("--out", required=True, type=click.Path(path_type=Path),
-              help="Output .csv / .xlsx or `-` for stdout CSV.")
+              help="Output .csv / .xlsx, directory/ for per-table files, or `-` for stdout.")
 @click.option("--headers", "header_mode", default="first-row",
               type=click.Choice(["first-row", "none"]))
 @common_output_options
@@ -74,6 +88,9 @@ def table(src: str, selector: str | None, index: int | None, all_tables: bool,
     out_str = str(out)
     is_stdout = out_str == "-"
     is_xlsx = out_str.lower().endswith(".xlsx")
+    is_dir = out_str.endswith(("/", "\\")) or (not is_stdout and not is_xlsx
+                                               and not out_str.lower().endswith(".csv")
+                                               and out.is_dir())
 
     if is_xlsx:
         try:
@@ -92,29 +109,55 @@ def table(src: str, selector: str | None, index: int | None, all_tables: bool,
         wb.save(buf)
         safe_write(out, lambda f: f.write(buf.getvalue()),
                    force=force, backup=backup, mkdir=mkdir)
+    elif is_dir:
+        if mkdir:
+            out.mkdir(parents=True, exist_ok=True)
+        if not out.exists():
+            die(f"directory does not exist: {out} (pass --mkdir to create)",
+                code=EXIT_INPUT, as_json=as_json)
+        for i, t in enumerate(tables, 1):
+            rows = _table_to_rows(t)
+            target = out / f"table-{i}.csv"
+            records = _rows_to_records(rows, header_mode)
+            if header_mode == "first-row" and rows:
+                write_rows_csv(str(target), records)  # type: ignore[arg-type]
+            else:
+                csv_text = _rows_to_csv_string(rows)
+                safe_write(target, lambda f, t=csv_text: f.write(t.encode("utf-8")),
+                           force=force, backup=backup, mkdir=False)
+    elif is_stdout:
+        if len(tables) == 1:
+            rows = _table_to_rows(tables[0])
+            if as_json:
+                emit_json(_rows_to_records(rows, header_mode))
+            else:
+                sys.stdout.write(_rows_to_csv_string(rows))
+        else:
+            # Multiple tables to stdout: JSON array or CSV blocks separated by "\n---\n".
+            all_rows = [_table_to_rows(t) for t in tables]
+            if as_json:
+                emit_json([_rows_to_records(r, header_mode) for r in all_rows])
+            else:
+                sep = "\n---\n"
+                chunks = [_rows_to_csv_string(r).rstrip("\n") for r in all_rows]
+                sys.stdout.write(sep.join(chunks))
+                if chunks:
+                    sys.stdout.write("\n")
     else:
-        if len(tables) > 1 and not is_stdout:
-            die("CSV output supports only one table; use --index or .xlsx",
+        # Single CSV file path with possibly multiple tables.
+        if len(tables) > 1:
+            die("CSV output supports only one table; use --index, --all with a directory, or .xlsx",
                 code=EXIT_USAGE, as_json=as_json)
         rows = _table_to_rows(tables[0])
+        records = _rows_to_records(rows, header_mode)
         if header_mode == "first-row" and rows:
-            cols = rows[0]
-            records = [dict(zip(cols, r)) for r in rows[1:]]
-            write_rows_csv(out_str, records)
+            write_rows_csv(out_str, records)  # type: ignore[arg-type]
         else:
-            if is_stdout:
-                import csv
-                w = csv.writer(sys.stdout)
-                for r in rows:
-                    w.writerow(r)
-            else:
-                import csv, io
-                buf = io.StringIO()
-                csv.writer(buf).writerows(rows)
-                safe_write(out, lambda f: f.write(buf.getvalue().encode("utf-8")),
-                           force=force, backup=backup, mkdir=mkdir)
+            csv_text = _rows_to_csv_string(rows)
+            safe_write(out, lambda f: f.write(csv_text.encode("utf-8")),
+                       force=force, backup=backup, mkdir=mkdir)
 
-    if as_json:
+    if as_json and not is_stdout:
         emit_json({"out": str(out), "tables": len(tables)})
     elif not quiet and not is_stdout:
         click.echo(f"wrote {out} ({len(tables)} table(s))")

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 import tempfile
 from pathlib import Path
@@ -40,11 +41,8 @@ def loudnorm(src: Path, dst: Path, target_i: float, target_tp: float, target_lra
     af1 = (f"loudnorm=I={target_i}:TP={target_tp}:LRA={target_lra}"
            f":print_format=json")
 
-    pass1 = ["-y", "-i", str(src), "-af", af1, "-f", "null", "NUL"]
-    if dry_run:
-        click.echo("ffmpeg " + " ".join(pass1))
-        click.echo("ffmpeg <pass 2 with measured values> -> " + str(dst))
-        return
+    null_sink = "NUL" if os.name == "nt" else "/dev/null"
+    pass1 = ["-y", "-i", str(src), "-af", af1, "-f", "null", null_sink]
 
     try:
         r1 = run("ffmpeg", *pass1, check=True)
@@ -55,6 +53,16 @@ def loudnorm(src: Path, dst: Path, target_i: float, target_tp: float, target_lra
         measured = _parse_pass1(r1.stderr)
     except Exception as e:
         die(str(e), code=EXIT_SYSTEM, as_json=as_json)
+
+    if dry_run:
+        if as_json:
+            emit_json({"src": str(src), "dst": str(dst),
+                       "I": target_i, "TP": target_tp, "LRA": target_lra,
+                       "measured": measured, "dry_run": True})
+        else:
+            click.echo(json.dumps(measured, indent=2))
+            click.echo(f"(pass-2 skipped: --dry-run; would write {dst})")
+        return
 
     af2 = (f"loudnorm=I={target_i}:TP={target_tp}:LRA={target_lra}"
            f":measured_I={measured['input_i']}"

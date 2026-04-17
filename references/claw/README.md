@@ -34,7 +34,7 @@ The CLI is a thin adapter. It does not reinvent any library and it does not hide
 ## 1. What `claw` is
 
 - A thin CLI over proven libraries. The "good code" still lives in `openpyxl`, `fitz`, `Pillow`, etc. — `claw` just removes the 10-line boilerplate for common tasks and gives them a consistent surface (flags, exit codes, JSON).
-- A pipeline substrate. `claw pipeline run recipe.yaml` replaces the hand-written Python orchestration in [examples/data-pipelines.md](../../examples/data-pipelines.md) with declarative YAML — see [references/claw/pipeline.md](pipeline.md).
+- A pipeline substrate. `claw pipeline run recipe.yaml` replaces the hand-written Python orchestration in [examples/claw-pipelines.md](../../examples/claw-pipelines.md) with declarative YAML — see [references/claw/pipeline.md](pipeline.md).
 - **Not** a generic scripting runtime. If your task is one Python call, just write it. If it's five calls with intermediate files, `claw` is worth it.
 - **Not** an auth broker. `gws auth` stays the source of truth for Google; `clickup auth` for ClickUp; Gmail OAuth JSON for SMTP fallback. `claw doctor` verifies these.
 
@@ -240,23 +240,25 @@ Cache entries never contain secrets; interpolation results that resolve `${env:.
 
 ## 12. When `claw` isn't enough
 
-`claw` covers the 80%. The remaining 20% is where you want full library access. Each noun's reference ends with a "When `claw <noun>` isn't enough" section linking back to the canonical library docs:
+`claw` covers the 80%. The remaining 20% is where you want full library access. Each noun's reference ends with a `When claw <noun> isn't enough` section listing the relevant libraries, `pip install` command, canonical docs URL, and the non-obvious gotchas you'll actually hit:
 
-| Noun | Escape hatch |
-|------|--------------|
-| `xlsx` | [references/document-creation.md § openpyxl](../document-creation.md#1-openpyxl-excel-xlsx) |
-| `docx` | [references/document-creation.md § python-docx](../document-creation.md#2-python-docx-word-docx) |
-| `pptx` | [references/document-creation.md § python-pptx](../document-creation.md#3-python-pptx-powerpoint-pptx) |
-| `pdf` | [references/pdf-tools.md](../pdf-tools.md) (fitz / pypdf / pdfplumber / reportlab) |
-| `img` | [references/media-tools.md § Pillow / ImageMagick](../media-tools.md) |
-| `media` | [references/media-tools.md § ffmpeg](../media-tools.md#3-ffmpeg) |
-| `convert` | [references/conversion-tools.md](../conversion-tools.md) (full Pandoc flag surface) |
-| `email` | [references/email-reference.md](../email-reference.md) (raw MIME + Gmail API) |
+| Noun | Libraries to drop to |
+|------|----------------------|
+| `xlsx` | [openpyxl](xlsx.md#when-claw-xlsx-isnt-enough) |
+| `docx` | [python-docx](docx.md#when-claw-docx-isnt-enough) |
+| `pptx` | [python-pptx](pptx.md#when-claw-pptx-isnt-enough) |
+| `pdf` | [PyMuPDF / pypdf / pdfplumber / reportlab](pdf.md#when-claw-pdf-isnt-enough) |
+| `img` | [Pillow / ImageMagick](img.md#when-claw-img-isnt-enough) |
+| `media` | [ffmpeg / ffprobe](media.md#when-claw-media-isnt-enough) |
+| `convert` | [pandoc](convert.md#when-claw-convert-isnt-enough) |
+| `email` | [Python `email.mime` + gws gmail](email.md#when-claw-email-isnt-enough) |
 | `doc` / `sheet` | [references/gws-cli.md](../gws-cli.md) (all `gws` verbs + params) |
-| `html` / `xml` | [references/web-parsing.md](../web-parsing.md) (lxml + BS4 full API) |
-| `browser` | [references/chrome-devtools.md](../chrome-devtools.md) |
+| `html` | [BeautifulSoup4 / lxml.html / trafilatura](html.md#when-claw-html-isnt-enough) |
+| `xml` | [lxml](xml.md#when-claw-xml-isnt-enough) |
+| `web` | [requests / httpx / trafilatura](web.md#when-claw-web-isnt-enough) |
+| `browser` | [references/claw/browser.md § escape hatch](browser.md#escape-hatch--manual-browser-launch) |
 
-The rule: if the library reference has a feature and `claw` doesn't, that's a known gap — drop to the library, don't file a bug.
+The rule: if the library has a feature and `claw` doesn't, that's a known gap — drop to the library, don't file a bug.
 
 ---
 

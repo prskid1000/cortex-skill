@@ -1,6 +1,8 @@
 # `claw doctor` — Environment Diagnostics
 
-`claw doctor` inspects everything `claw` depends on and prints one row per check. It mirrors `scripts/healthcheck.py` (the skill-level Python healthcheck) but runs from the shipped `claw` binary, so agents can invoke it anywhere `claw` is installed.
+> Source: [scripts/claw/src/claw/doctor.py](../../scripts/claw/src/claw/doctor.py)
+
+`claw doctor` inspects everything `claw` depends on and prints one row per check. It mirrors [`scripts/healthcheck.py`](../../scripts/healthcheck.py) (the skill-level Python healthcheck) but runs from the shipped `claw` binary, so agents can invoke it anywhere `claw` is installed.
 
 The rule: **`claw doctor` must pass clean before any `claw pipeline run` in CI**. Every failing row is either auto-fixable (`--fix`) or has a copy-paste install hint.
 
@@ -118,7 +120,7 @@ Resolved via `shutil.which`, versions parsed from `--version`:
 | `tesseract` | `claw pdf ocr`, `claw img ocr` | `winget install UB-Mannheim.TesseractOCR` |
 | `exiftool` | `claw img meta`, `claw media meta` | `winget install OliverBetz.ExifTool` |
 | `gws` | `claw email`, `claw doc`, `claw sheet` | `npm install -g @anthropic/gws` |
-| `clickup` | `claw clickup` (if plugin enabled) | See [setup.md § 2](../setup.md#2-cli-tools) |
+| `clickup` | `claw clickup` (if plugin enabled) | Manual GitHub release download (healthcheck prints the URL) |
 | `node` | `gws`, LSP plugins | `winget install OpenJS.NodeJS` |
 | `npx` | MCP servers | (ships with node) |
 

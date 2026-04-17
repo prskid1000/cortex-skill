@@ -1,8 +1,10 @@
 # `claw docx` — Word Operations Reference
 
+> Source directory: [scripts/claw/src/claw/docx/](../../scripts/claw/src/claw/docx/)
+
 CLI wrapper over `python-docx` (plus pandoc for markdown ingestion). Authoring and light editing of `.docx` files.
 
-Library API for escape hatches: [references/document-creation.md § python-docx](../document-creation.md#2-python-docx-word-docx).
+Library API for escape hatches: see [When `claw docx` Isn't Enough](#when-claw-docx-isnt-enough).
 
 ## Contents
 
@@ -18,7 +20,7 @@ Library API for escape hatches: [references/document-creation.md § python-docx]
   - [Core / custom properties](#51-meta) · [Attach custom XML](#52-custom-xml-attach)
 - **TABLES**
   - [Autofit vs fixed width](#61-table-fit)
-- **When `claw docx` isn't enough** — [python-docx escape hatches](#when-claw-isnt-enough)
+- **When `claw docx` isn't enough** — [python-docx escape hatches](#when-claw-docx-isnt-enough)
 
 ---
 
@@ -31,12 +33,15 @@ Library API for escape hatches: [references/document-creation.md § python-docx]
 5. **Help** — `claw docx --help`, `claw docx <verb> --help`, `claw help docx <verb>` alias, `--examples` for recipes.
 6. **Stream mode** — `--stream` is a no-op for `.docx` (format loads fully into memory). Use pandoc (`claw docx from-md --engine pandoc-stream`) for docs &gt; 100 MB.
 7. **Anchor safety** — `--at "..."` requires exactly one match; zero matches returns exit 4, multiple matches exit 2 unless `--match-nth N` is passed.
+8. **Common output flags** — every mutating verb inherits `--force`, `--backup`, `--dry-run`, `--json`, `--quiet`, `--mkdir` via the shared `@common_output_options` decorator. Individual verb blocks only call them out when the verb overrides the default; run `claw docx <verb> --help` for the authoritative per-verb flag list.
 
 ---
 
 ## 1. CREATE
 
 ### 1.1 `new`
+
+> Source: [scripts/claw/src/claw/docx/new.py](../../scripts/claw/src/claw/docx/new.py)
 
 Create a blank `.docx`.
 
@@ -53,6 +58,8 @@ claw docx new /tmp/report.docx --template ~/templates/corporate.docx
 ```
 
 ### 1.2 `from-md`
+
+> Source: [scripts/claw/src/claw/docx/from_md.py](../../scripts/claw/src/claw/docx/from_md.py)
 
 Convert Markdown (or any pandoc input format) into `.docx` using bundled pandoc.
 
@@ -75,6 +82,8 @@ claw docx from-md /tmp/spec.docx --data spec.md --reference ~/templates/corporat
 
 ### 2.1 `read`
 
+> Source: [scripts/claw/src/claw/docx/read.py](../../scripts/claw/src/claw/docx/read.py)
+
 Extract structured text / JSON from a document.
 
 ```
@@ -95,6 +104,8 @@ claw docx read report.docx --headings
 
 ### 2.2 `comments dump`
 
+> Source: **NOT IMPLEMENTED** — no `docx/comments.py` exists.
+
 Extract inline comments (`w:comment` + anchor text).
 
 ```
@@ -108,6 +119,8 @@ claw docx comments dump review.docx --author "Reviewer A" --json
 ```
 
 ### 2.3 `diff`
+
+> Source: **NOT IMPLEMENTED** — no `docx/diff.py` exists.
 
 Show tracked changes (`w:ins` / `w:del` revisions).
 
@@ -127,6 +140,8 @@ claw docx diff manuscript.docx --author "editor@..."
 
 ### 3.1 `add-heading`
 
+> Source: [scripts/claw/src/claw/docx/add_heading.py](../../scripts/claw/src/claw/docx/add_heading.py)
+
 Append (or insert at anchor) a heading.
 
 ```
@@ -141,6 +156,8 @@ claw docx add-heading spec.docx --text "3. API" --level 2 --after "2. Architectu
 ```
 
 ### 3.2 `add-paragraph`
+
+> Source: [scripts/claw/src/claw/docx/add_paragraph.py](../../scripts/claw/src/claw/docx/add_paragraph.py)
 
 Add a paragraph with optional run-level formatting.
 
@@ -159,6 +176,8 @@ claw docx add-paragraph notice.docx --text "Confidential — do not distribute."
 
 ### 3.3 `add-table`
 
+> Source: [scripts/claw/src/claw/docx/add_table.py](../../scripts/claw/src/claw/docx/add_table.py)
+
 Insert a table from CSV / JSON.
 
 ```
@@ -175,6 +194,8 @@ claw docx add-table report.docx --data results.csv --header --style "Light Grid 
 
 ### 3.4 `add-image`
 
+> Source: [scripts/claw/src/claw/docx/add_image.py](../../scripts/claw/src/claw/docx/add_image.py)
+
 Insert an inline or floating image.
 
 ```
@@ -190,6 +211,8 @@ claw docx add-image report.docx --image /tmp/chart.png --width 5 --align center 
 
 ### 3.5 `insert pagebreak`
 
+> Source: **NOT IMPLEMENTED** — no `docx/insert.py` / `docx/insert_pagebreak.py` exists.
+
 Insert a page break before (default) or after a paragraph anchor.
 
 ```
@@ -204,6 +227,8 @@ claw docx insert pagebreak spec.docx --before "Chapter 2"
 ```
 
 ### 3.6 `hyperlink add`
+
+> Source: **NOT IMPLEMENTED** — no `docx/hyperlink.py` exists.
 
 Wrap an existing text run in a hyperlink (adds run-level XML — see footgun).
 
@@ -224,6 +249,8 @@ claw docx hyperlink add report.docx --text "methodology" --url https://wiki/meth
 
 ### 4.1 `style`
 
+> Source: **NOT IMPLEMENTED** — no `docx/style.py` exists.
+
 Define a new paragraph or character style, or apply one to matched paragraphs.
 
 ```
@@ -243,6 +270,8 @@ claw docx style apply  report.docx --name Caption --all-matching-style "Body Tex
 
 ### 4.2 `section add`
 
+> Source: **NOT IMPLEMENTED** — no `docx/section.py` exists.
+
 Append a new section with its own page layout.
 
 ```
@@ -259,6 +288,8 @@ claw docx section add report.docx --orientation landscape --columns 2 --margin-l
 
 ### 4.3 `header set`
 
+> Source: [scripts/claw/src/claw/docx/header.py](../../scripts/claw/src/claw/docx/header.py)
+
 Set the header text for a section (defaults to all sections).
 
 ```
@@ -273,6 +304,8 @@ claw docx header set report.docx --text "Quarterly Report — Confidential" --al
 ```
 
 ### 4.4 `footer set`
+
+> Source: [scripts/claw/src/claw/docx/footer.py](../../scripts/claw/src/claw/docx/footer.py)
 
 Same shape as `header set`, plus a page-number token.
 
@@ -289,6 +322,8 @@ claw docx footer set report.docx --text "Page " --page-number --align right
 ```
 
 ### 4.5 `toc insert`
+
+> Source: [scripts/claw/src/claw/docx/toc.py](../../scripts/claw/src/claw/docx/toc.py)
 
 Insert a Table of Contents field at an anchor. Word recomputes on open.
 
@@ -308,6 +343,8 @@ claw docx toc insert spec.docx --before "1. Introduction" --levels 1-2
 
 ### 5.1 `meta`
 
+> Source: [scripts/claw/src/claw/docx/meta.py](../../scripts/claw/src/claw/docx/meta.py)
+
 Core document properties.
 
 ```
@@ -323,6 +360,8 @@ claw docx meta set report.docx --title "Q3 Review" --author "Finance" --keywords
 ```
 
 ### 5.2 `custom-xml attach`
+
+> Source: **NOT IMPLEMENTED** — no `docx/custom_xml.py` exists.
 
 Embed a custom XML part (used by SharePoint / document bindings).
 
@@ -342,6 +381,8 @@ claw docx custom-xml attach report.docx --part metadata.xml --id reportMetadata
 
 ### 6.1 `table fit`
 
+> Source: **NOT IMPLEMENTED** — no `docx/table_fit.py` exists.
+
 Switch table width mode between autofit and fixed column widths.
 
 ```
@@ -358,14 +399,19 @@ claw docx table fit report.docx --at "Table 1" --mode fixed --widths "1in,3in,1i
 
 ## When `claw docx` Isn't Enough
 
-Use `python-docx` (+ `docx.oxml` for raw XML) directly — see [document-creation.md § python-docx](../document-creation.md#2-python-docx-word-docx).
+Use `python-docx` (+ `docx.oxml` for raw XML) directly.
 
-| Use case | Why `claw` can't do it | Library anchor |
-|---|---|---|
-| SmartArt | Not supported by `python-docx` at all — use a template that already contains it | — |
-| Embedded Excel / chart OLE objects | Same; author via a template `.docx` | — |
-| Real Word charts (bar / line / etc.) | Only available via the docx → docx template path | — |
-| Arbitrary `w:*` XML (drawing ML, DrawingML fallback) | Escape-hatch for rare layout requirements | [Paragraphs & runs](../document-creation.md#22-paragraphs--runs) |
+| Use case | Why `claw` can't do it |
+|---|---|
+| SmartArt | Not supported by `python-docx` at all — use a template that already contains it |
+| Embedded Excel / chart OLE objects | Same; author via a template `.docx` |
+| Real Word charts (bar / line / etc.) | Only available via the docx → docx template path |
+| Arbitrary `w:*` XML (drawing ML, DrawingML fallback) | Escape-hatch for rare layout requirements |
+
+**python-docx** — `pip install python-docx` · [docs](https://python-docx.readthedocs.io/)
+- Import is `from docx import Document` — the package name (`python-docx`) and the import name (`docx`) differ, and there's a separate unrelated `docx` on PyPI you must not install.
+- No read/write access to tracked-changes (revision marks) or comment-resolution state — walk `document.part.element` XML via `lxml` directly.
+- Assigning `run.text = "..."` only touches the first run's text in a multi-run paragraph; set `.text` on the paragraph (destroys formatting) or edit runs individually.
 
 ## Footguns
 

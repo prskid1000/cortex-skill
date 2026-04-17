@@ -239,9 +239,40 @@ def _dispatch(doc_id: str, requests: list[dict], chunk_size: int,
     return last_ok
 
 
+def _collect_embedded_objects(body: dict) -> list[dict]:
+    """Walk body.content — collect tables, positioned objects, and inline objects.
+
+    Returns descriptors of shape `{kind, startIndex, endIndex, ...id-field}` so the caller
+    can sort them reverse-by-startIndex and issue deletes without invalidating indices.
+    """
+    found: list[dict] = []
+    for elt in body.get("content", []) or []:
+        if "table" in elt:
+            found.append({
+                "kind": "table",
+                "startIndex": elt.get("startIndex", 0),
+                "endIndex": elt.get("endIndex", 0),
+            })
+        if "paragraph" in elt:
+            for piece in elt["paragraph"].get("elements", []) or []:
+                if "inlineObjectElement" in piece:
+                    found.append({
+                        "kind": "inlineObject",
+                        "startIndex": piece.get("startIndex", 0),
+                        "endIndex": piece.get("endIndex", 0),
+                        "objectId": piece["inlineObjectElement"].get("inlineObjectId"),
+                    })
+    return found
+
+
+def _positioned_object_ids(doc: dict) -> list[str]:
+    return list((doc.get("positionedObjects") or {}).keys())
+
+
 def _build_and_dispatch(doc_id: str, source: str, tab_id: str, *,
                         append: bool, chunk_size: int, from_index: int,
-                        as_json: bool, quiet: bool, verbose: bool) -> None:
+                        as_json: bool, quiet: bool, verbose: bool,
+                        force_clear: bool = False) -> None:
     md = Path(source).read_text(encoding="utf-8")
     blocks = _blocks_from_md(md)
     start_index = 1
@@ -252,6 +283,79 @@ def _build_and_dispatch(doc_id: str, source: str, tab_id: str, *,
             data = json.loads(get.stdout)
             body = _find_tab_body(data, tab_id)
             if body:
+                objects = _collect_embedded_objects(body)
+                pos_ids = _positioned_object_ids(data)
+                if objects or pos_ids:
+                    if not force_clear:
+                        summary = ", ".join(
+                            f"{o['kind']}@[{o['startIndex']},{o['endIndex']})"
+                            for o in objects
+                        )
+                        if pos_ids:
+                            summary = (summary + "; " if summary else "") + \
+                                      f"positionedObjects=[{','.join(pos_ids)}]"
+                        click.echo(
+                            f"warning: doc has embedded objects ({summary}); "
+                            f"skipping clear and appending at end. "
+                            f"pass --force-clear to remove them.",
+                            err=True,
+                        )
+                        start_index = max(_max_end_index(body) - 1, 1)
+                        requests, _ = _requests_for_blocks(blocks, tab_id, start_index)
+                        try:
+                            last_ok = _dispatch(doc_id, requests, chunk_size,
+                                                from_index, verbose=verbose)
+                        except RuntimeError as e:
+                            if as_json:
+                                emit_json({"doc_id": doc_id, "error": str(e)})
+                            die(str(e), code=EXIT_PARTIAL, as_json=as_json)
+                            return
+                        if as_json:
+                            emit_json({"doc_id": doc_id,
+                                       "chunks": (len(requests) + chunk_size - 1) // chunk_size,
+                                       "last_index": last_ok,
+                                       "total_requests": len(requests),
+                                       "skipped_clear": True})
+                        elif not quiet:
+                            click.echo(f"applied {len(requests)} requests to {doc_id}")
+                        return
+
+                    pre: list[dict] = []
+                    for obj in sorted(objects, key=lambda o: o["startIndex"], reverse=True):
+                        if obj["kind"] == "table":
+                            pre.append({"deleteTable": {
+                                "tableStartLocation": {
+                                    "index": obj["startIndex"], "tabId": tab_id,
+                                },
+                            }})
+                        elif obj["kind"] == "inlineObject":
+                            pre.append({"deleteContentRange": {
+                                "range": {
+                                    "startIndex": obj["startIndex"],
+                                    "endIndex": obj["endIndex"],
+                                    "tabId": tab_id,
+                                },
+                            }})
+                    for pid in pos_ids:
+                        pre.append({"deletePositionedObject": {
+                            "objectId": pid, "tabId": tab_id,
+                        }})
+                    if pre:
+                        drop = gws_run("docs", "documents", "batchUpdate",
+                                       "--params", json.dumps({"documentId": doc_id}),
+                                       "--json", json.dumps({"requests": pre}))
+                        if drop.returncode != 0 and verbose:
+                            click.echo(f"object-clear warning: {drop.stderr.strip()}",
+                                       err=True)
+                        re_get = gws_run(
+                            "docs", "documents", "get",
+                            "--params", json.dumps(
+                                {"documentId": doc_id, "includeTabsContent": True}
+                            ),
+                        )
+                        if re_get.returncode == 0:
+                            body = _find_tab_body(json.loads(re_get.stdout), tab_id) or body
+
                 end = _max_end_index(body)
                 if end > 2:
                     pre = [{"deleteContentRange": {
@@ -300,10 +404,13 @@ def _max_end_index(body: dict) -> int:
 @click.option("--tab", "tab_id", default="t.0")
 @click.option("--append", is_flag=True)
 @click.option("--replace-all", is_flag=True)
+@click.option("--force-clear", is_flag=True,
+              help="Delete embedded tables / inline / positioned objects before clearing text.")
 @click.option("--chunk-size", default=8, type=int)
 @click.option("--from-index", default=0, type=int)
 @common_output_options
-def build(doc_id, source, tab_id, append, replace_all, chunk_size, from_index,
+def build(doc_id, source, tab_id, append, replace_all, force_clear,
+          chunk_size, from_index,
           force, backup, as_json, dry_run, quiet, verbose, mkdir) -> None:
     """Apply a markdown file to an existing Doc."""
     if dry_run:
@@ -318,6 +425,7 @@ def build(doc_id, source, tab_id, append, replace_all, chunk_size, from_index,
         _build_and_dispatch(doc_id, source, tab_id,
                             append=append and not replace_all,
                             chunk_size=chunk_size, from_index=from_index,
-                            as_json=as_json, quiet=quiet, verbose=verbose)
+                            as_json=as_json, quiet=quiet, verbose=verbose,
+                            force_clear=force_clear)
     except FileNotFoundError as e:
         die(str(e), code=EXIT_SYSTEM, as_json=as_json)

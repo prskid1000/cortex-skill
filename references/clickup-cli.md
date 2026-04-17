@@ -2,7 +2,7 @@
 
 > Terminal tool for ClickUp tasks, sprints, comments, time tracking, and git integration.
 
-**Related:** [examples/clickup-workflows.md](../examples/clickup-workflows.md) · install via [setup.md](setup.md#2-cli-tools)
+**Related:** [examples/clickup-workflows.md](../examples/clickup-workflows.md) · install: `python scripts/healthcheck.py --install` (clickup binary itself is a manual GitHub release download; see healthcheck hints)
 
 ## Contents
 

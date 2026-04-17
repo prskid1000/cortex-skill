@@ -1,8 +1,10 @@
 # `claw web` — HTTP Fetch + Content Extraction Reference
 
+> Source directory: [scripts/claw/src/claw/web/](../../scripts/claw/src/claw/web/)
+
 Small, composable CLI for the HTTP side of web work: fetch a URL, extract clean article text (trafilatura-style), pull tables, or enumerate links. For structured HTML scraping with selectors, chain into [`claw html`](html.md). For JavaScript-rendered sites, launch a real browser with [`claw browser`](browser.md).
 
-Library API for escape hatches: `requests` / `httpx` for fetch, `trafilatura` for extraction, [references/web-parsing.md](../web-parsing.md) for post-processing.
+Library API for escape hatches: `requests` / `httpx` for fetch, `trafilatura` for extraction. See [When `claw web` Isn't Enough](#when-claw-web-isnt-enough) for post-processing.
 
 ## Contents
 
@@ -16,7 +18,7 @@ Library API for escape hatches: `requests` / `httpx` for fetch, `trafilatura` fo
   - [List anchors with filters](#41-links)
 - **SNAPSHOT + ARCHIVE**
   - [Save page as single-file html / warc](#51-snapshot)
-- **When `claw web` isn't enough** — [escape hatches](#when-claw-isnt-enough)
+- **When `claw web` isn't enough** — [escape hatches](#when-claw-web-isnt-enough)
 
 ---
 
@@ -30,12 +32,15 @@ Library API for escape hatches: `requests` / `httpx` for fetch, `trafilatura` fo
 6. **User-Agent** — default UA is `claw/1.0 (+https://github.com/...)` — a real, identifiable, well-behaved bot string. Override with `--ua STR` or set `CLAW_WEB_UA` env. Some sites 403 generic Python-requests UAs; `claw` avoids that footgun.
 7. **Stdin / stdout glue** — `fetch` with `--out -` prints to stdout; `extract` / `table` / `links` accept `-` as their `<url|->` positional to read HTML from stdin. Makes pipelines trivial: `claw web fetch URL --out - | claw web extract -`.
 8. **Rate limiting** — default 1 request/sec per-origin. `--rps N` raises it (use responsibly). `--sleep S` inserts a fixed delay instead.
+9. **Common output flags** — every mutating verb inherits `--force`, `--backup`, `--dry-run`, `--json`, `--quiet`, `--mkdir` via the shared `@common_output_options` decorator. Individual verb blocks only call them out when the verb overrides the default; run `claw web <verb> --help` for the authoritative per-verb flag list.
 
 ---
 
 ## 1. FETCH
 
 ### 1.1 `fetch`
+
+> Source: [scripts/claw/src/claw/web/fetch.py](../../scripts/claw/src/claw/web/fetch.py)
 
 HTTP GET/POST with sensible defaults (redirects followed, gzip decoded, UTF-8 decoded when possible).
 
@@ -85,6 +90,8 @@ Output (`--json`):
 
 ### 2.1 `extract`
 
+> Source: [scripts/claw/src/claw/web/extract.py](../../scripts/claw/src/claw/web/extract.py)
+
 Extract main article text — title, author, date, body — stripping boilerplate (nav, ads, comments). Uses trafilatura-style heuristics under the hood.
 
 ```
@@ -122,6 +129,8 @@ claw web fetch https://example.com/post --out - \
 
 ### 3.1 `table`
 
+> Source: [scripts/claw/src/claw/web/table.py](../../scripts/claw/src/claw/web/table.py)
+
 Pull `<table>` elements → CSV / XLSX. For one table, streams CSV. For multiple, writes an xlsx with one sheet per table.
 
 ```
@@ -158,6 +167,8 @@ claw web fetch URL --out - | claw web table - --selector ".data-grid" --out /tmp
 
 ### 4.1 `links`
 
+> Source: [scripts/claw/src/claw/web/links.py](../../scripts/claw/src/claw/web/links.py)
+
 Enumerate anchor hrefs.
 
 ```
@@ -189,6 +200,8 @@ claw web links https://example.com --filter "href contains 'pdf'" --format json
 ## 5. SNAPSHOT
 
 ### 5.1 `snapshot`
+
+> Source: **NOT IMPLEMENTED** — no `web/snapshot.py` exists.
 
 Save a page as a self-contained file (inlined CSS, images). Useful for archiving and sharing.
 
@@ -226,6 +239,10 @@ Drop into the libraries or sibling tools:
 | Rate-limited API with OAuth | No OAuth flow | `authlib` / `requests-oauthlib` |
 | Streamed large download with resume | `fetch` re-downloads from scratch on retry | `curl -C -` or `wget -c` |
 | Concurrent crawl of 100s of URLs | No parallelism | Python `asyncio` + `httpx.AsyncClient` |
+
+**lxml** — see [`claw html` escape hatches](html.md#when-claw-html-isnt-enough) for lxml gotchas (post-fetch tree walks).
+
+**BeautifulSoup4** — see [`claw html` escape hatches](html.md#when-claw-html-isnt-enough) for BS4 gotchas. `claw web extract` wraps `trafilatura`, not BS4, so raw DOM walking on the fetched HTML is a BS4 job.
 
 ## Footguns
 

@@ -1,14 +1,45 @@
-"""claw xml validate — validate against XSD / RelaxNG / DTD."""
+"""claw xml validate — validate against XSD / RelaxNG (xml or compact) / DTD."""
 from __future__ import annotations
 
+import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 import click
 
 from claw.common import (
-    EXIT_INPUT, EXIT_USAGE, common_output_options, die, emit_json,
+    EXIT_INPUT, EXIT_SYSTEM, EXIT_USAGE, common_output_options, die, emit_json, run, which,
 )
+
+
+_TRANG_HINT = (
+    "install trang: `winget install ThaiOpenSource.trang` "
+    "or download from https://relaxng.org/jclark/trang.html"
+)
+
+
+def _compile_rnc_to_rng(rnc_path: Path, as_json: bool) -> Path:
+    """Shell out to `trang` to convert an .rnc file to a temporary .rng file."""
+    if which("trang") is None:
+        die("RelaxNG Compact (.rnc) requires the `trang` tool which is not on PATH",
+            code=EXIT_SYSTEM, hint=_TRANG_HINT, as_json=as_json)
+
+    fd, tmp = tempfile.mkstemp(prefix="claw-rnc-", suffix=".rng")
+    import os
+    os.close(fd)
+    tmp_path = Path(tmp)
+    try:
+        run("trang", str(rnc_path), str(tmp_path))
+    except FileNotFoundError:
+        tmp_path.unlink(missing_ok=True)
+        die("trang not found on PATH", code=EXIT_SYSTEM, hint=_TRANG_HINT, as_json=as_json)
+    except subprocess.CalledProcessError as e:
+        tmp_path.unlink(missing_ok=True)
+        stderr = (e.stderr or "").strip()
+        die(f"trang failed to compile {rnc_path}: {stderr or e}",
+            code=EXIT_INPUT, as_json=as_json)
+    return tmp_path
 
 
 @click.command(name="validate")
@@ -46,32 +77,38 @@ def validate(src: Path, xsd: Path | None, rng: Path | None, rnc: Path | None,
     except etree.XMLSyntaxError as e:
         die(f"XML parse error: {e}", code=EXIT_INPUT, as_json=as_json)
 
+    compiled_rng: Path | None = None
     try:
         if kind == "xsd":
             schema = etree.XMLSchema(etree.parse(str(schema_path), parser=parser))
         elif kind == "rng":
             schema = etree.RelaxNG(etree.parse(str(schema_path), parser=parser))
         elif kind == "rnc":
-            die("RelaxNG Compact (.rnc) not supported directly; convert to .rng first",
-                code=EXIT_USAGE, as_json=as_json)
-            return
+            compiled_rng = _compile_rnc_to_rng(schema_path, as_json)
+            schema = etree.RelaxNG(etree.parse(str(compiled_rng), parser=parser))
         else:
             schema = etree.DTD(str(schema_path))
     except (etree.XMLSchemaParseError, etree.RelaxNGParseError,
             etree.DTDParseError, etree.XMLSyntaxError) as e:
+        if compiled_rng is not None:
+            compiled_rng.unlink(missing_ok=True)
         die(f"schema load error: {e}", code=EXIT_INPUT, as_json=as_json)
 
-    valid = schema.validate(doc)
-    errors = []
-    if not valid:
-        log = schema.error_log
-        items = list(log) if all_errors else ([log[0]] if len(log) else [])
-        for err in items:
-            errors.append({
-                "line": err.line, "column": err.column,
-                "domain": err.domain_name, "type": err.type_name,
-                "message": err.message,
-            })
+    try:
+        valid = schema.validate(doc)
+        errors = []
+        if not valid:
+            log = schema.error_log
+            items = list(log) if all_errors else ([log[0]] if len(log) else [])
+            for err in items:
+                errors.append({
+                    "line": err.line, "column": err.column,
+                    "domain": err.domain_name, "type": err.type_name,
+                    "message": err.message,
+                })
+    finally:
+        if compiled_rng is not None:
+            compiled_rng.unlink(missing_ok=True)
 
     if as_json:
         emit_json({"valid": valid, "errors": errors})

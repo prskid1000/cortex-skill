@@ -78,8 +78,24 @@ def conditional(src: Path, sheet: str, a1_range: str,
         rule = DataBarRule(start_type="min", end_type="max",
                            color=data_bar.lstrip("#"), showValue=True)
     elif icon_set:
-        kind, *_rest = icon_set.split(":")
-        rule = IconSetRule(kind, "percent", [0, 33, 67])
+        parts = icon_set.split(":")
+        kind = parts[0]
+        scope = "percent"
+        thresholds: list[float] = [0, 33, 67]
+        if len(parts) >= 3 and parts[1] in ("percent", "num", "percentile", "formula"):
+            scope = parts[1]
+            try:
+                thresholds = [float(v) for v in parts[2].split(",") if v.strip()]
+            except ValueError:
+                die(f"invalid icon-set thresholds: {parts[2]!r}",
+                    code=EXIT_INPUT, as_json=as_json)
+        elif len(parts) == 2 and parts[1]:
+            try:
+                thresholds = [float(v) for v in parts[1].split(",") if v.strip()]
+            except ValueError:
+                die(f"invalid icon-set thresholds: {parts[1]!r}",
+                    code=EXIT_INPUT, as_json=as_json)
+        rule = IconSetRule(kind, scope, thresholds)
 
     ws.conditional_formatting.add(a1_range, rule)
 

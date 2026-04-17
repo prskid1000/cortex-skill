@@ -16,6 +16,7 @@ VERBS: dict[str, tuple[str, str]] = {
     "loudnorm":      ("claw.media.loudnorm", "loudnorm"),
     "speed":         ("claw.media.speed", "speed"),
     "fade":          ("claw.media.fade", "fade"),
+    "crop-auto":     ("claw.media.crop_auto", "crop_auto"),
     "info":          ("claw.media.info", "info"),
 }
 

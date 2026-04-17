@@ -39,6 +39,7 @@ all = [
   "networkx>=3",
 ]
 dev = ["pytest>=8", "syrupy>=4", "ruff>=0.6"]
+test = ["pytest>=8", "pytest-xdist>=3"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/claw"]

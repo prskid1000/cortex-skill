@@ -12,6 +12,7 @@ from claw.common import PageSelector, die, emit_json, safe_write
 
 
 STRATEGIES = ("lines", "lines_strict", "text", "explicit")
+AXIS_STRATEGIES = ("lines", "lines_strict", "text", "explicit")
 
 
 def _parse_floats(spec: str | None) -> list[float] | None:
@@ -23,7 +24,14 @@ def _parse_floats(spec: str | None) -> list[float] | None:
 @click.command(name="extract-tables")
 @click.argument("src", type=click.Path(exists=True, dir_okay=False, path_type=Path))
 @click.option("--pages", default="all", help="Page range (default: all).")
-@click.option("--strategy", type=click.Choice(STRATEGIES), default="lines")
+@click.option("--strategy", type=click.Choice(STRATEGIES), default="lines",
+              help="Preset applied to both axes; overridden by --vertical-strategy / --horizontal-strategy.")
+@click.option("--vertical-strategy", "vertical_strategy",
+              type=click.Choice(AXIS_STRATEGIES), default=None,
+              help="Per-axis override for vertical edges.")
+@click.option("--horizontal-strategy", "horizontal_strategy",
+              type=click.Choice(AXIS_STRATEGIES), default=None,
+              help="Per-axis override for horizontal edges.")
 @click.option("--vlines", help="Explicit vertical split x-coords, comma-separated.")
 @click.option("--hlines", help="Explicit horizontal split y-coords, comma-separated.")
 @click.option("--snap-tol", type=float, default=3.0)
@@ -38,8 +46,10 @@ def _parse_floats(spec: str | None) -> list[float] | None:
 @click.option("--backup", is_flag=True)
 @click.option("--mkdir", is_flag=True)
 @click.option("--json", "as_json", is_flag=True)
-def extract_tables(src: Path, pages: str, strategy: str, vlines: str | None,
-                   hlines: str | None, snap_tol: float, join_tol: float,
+def extract_tables(src: Path, pages: str, strategy: str,
+                   vertical_strategy: str | None, horizontal_strategy: str | None,
+                   vlines: str | None, hlines: str | None,
+                   snap_tol: float, join_tol: float,
                    edge_min_length: float, intersection_tol: float,
                    text_tolerance: float, bbox: str | None, out: Path | None,
                    force: bool, backup: bool, mkdir: bool, as_json: bool) -> None:
@@ -49,20 +59,33 @@ def extract_tables(src: Path, pages: str, strategy: str, vlines: str | None,
     except ImportError:
         die("pdfplumber not installed; install: pip install 'claw[pdf]'")
 
+    v_strat = vertical_strategy or strategy
+    h_strat = horizontal_strategy or strategy
+
     settings: dict = {
-        "vertical_strategy": strategy if strategy != "lines_strict" else "lines_strict",
-        "horizontal_strategy": "lines" if strategy.startswith("lines") else strategy,
+        "vertical_strategy": v_strat,
+        "horizontal_strategy": h_strat,
         "snap_tolerance": snap_tol,
         "join_tolerance": join_tol,
         "edge_min_length": edge_min_length,
         "intersection_tolerance": intersection_tol,
         "text_tolerance": text_tolerance,
     }
-    if strategy == "explicit":
-        settings["vertical_strategy"] = "explicit"
-        settings["horizontal_strategy"] = "explicit"
-        settings["explicit_vertical_lines"] = _parse_floats(vlines) or []
-        settings["explicit_horizontal_lines"] = _parse_floats(hlines) or []
+
+    explicit_v = _parse_floats(vlines)
+    explicit_h = _parse_floats(hlines)
+    if v_strat == "explicit":
+        settings["explicit_vertical_lines"] = explicit_v or []
+        if not explicit_v:
+            die("--vertical-strategy explicit requires --vlines", code=2)
+    elif explicit_v:
+        settings["explicit_vertical_lines"] = explicit_v
+    if h_strat == "explicit":
+        settings["explicit_horizontal_lines"] = explicit_h or []
+        if not explicit_h:
+            die("--horizontal-strategy explicit requires --hlines", code=2)
+    elif explicit_h:
+        settings["explicit_horizontal_lines"] = explicit_h
 
     crop_box = None
     if bbox:

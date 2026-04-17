@@ -82,46 +82,47 @@ def forward(msg_id, to, cc, bcc, body_text, body_file, body_stdin, subject,
     )
     final_body = body + header_lines + parent_plain
 
-    inherited: list[str] = []
-    if not no_attachments:
-        import tempfile
-        import os
-        tmpdir = tempfile.mkdtemp(prefix="claw-fwd-")
-        for part in parent.iter_attachments():
-            name = part.get_filename() or "attachment.bin"
-            path = os.path.join(tmpdir, name)
-            with open(path, "wb") as f:
-                f.write(part.get_payload(decode=True) or b"")
-            inherited.append(f"@{path}")
+    import os
+    import tempfile
 
-    try:
-        msg = build_message(
-            to=_parse_addrs(to), cc=_parse_addrs(cc), bcc=_parse_addrs(bcc),
-            subject=final_subject, body=final_body,
-            attachments=list(attachments) + inherited,
-        )
-    except (ValueError, FileNotFoundError) as e:
-        die(str(e), code=EXIT_INPUT, as_json=as_json)
+    with tempfile.TemporaryDirectory(prefix="claw-fwd-") as tmpdir:
+        inherited: list[str] = []
+        if not no_attachments:
+            for part in parent.iter_attachments():
+                name = part.get_filename() or "attachment.bin"
+                path = os.path.join(tmpdir, name)
+                with open(path, "wb") as f:
+                    f.write(part.get_payload(decode=True) or b"")
+                inherited.append(f"@{path}")
 
-    raw_b64 = to_raw_b64(msg)
+        try:
+            msg = build_message(
+                to=_parse_addrs(to), cc=_parse_addrs(cc), bcc=_parse_addrs(bcc),
+                subject=final_subject, body=final_body,
+                attachments=list(attachments) + inherited,
+            )
+        except (ValueError, FileNotFoundError) as e:
+            die(str(e), code=EXIT_INPUT, as_json=as_json)
 
-    if dry_run:
+        raw_b64 = to_raw_b64(msg)
+
+        if dry_run:
+            if as_json:
+                emit_json({"dry_run": True, "threadId": thread_id,
+                           "headers": dict(msg.items()),
+                           "inherited_attachments": len(inherited)})
+            else:
+                click.echo(msg.as_string()[:2048])
+            return
+
+        proc = gws_run("gmail", "users", "messages", "send",
+                       "--params", json.dumps({"userId": "me"}),
+                       "--json", json.dumps({"raw": raw_b64}))
+        if proc.returncode != 0:
+            die(f"gws send failed: {proc.stderr.strip()}", code=EXIT_SYSTEM, as_json=as_json)
+
+        data = json.loads(proc.stdout)
         if as_json:
-            emit_json({"dry_run": True, "threadId": thread_id,
-                       "headers": dict(msg.items()),
-                       "inherited_attachments": len(inherited)})
-        else:
-            click.echo(msg.as_string()[:2048])
-        return
-
-    proc = gws_run("gmail", "users", "messages", "send",
-                   "--params", json.dumps({"userId": "me"}),
-                   "--json", json.dumps({"raw": raw_b64}))
-    if proc.returncode != 0:
-        die(f"gws send failed: {proc.stderr.strip()}", code=EXIT_SYSTEM, as_json=as_json)
-
-    data = json.loads(proc.stdout)
-    if as_json:
-        emit_json(data)
-    elif not quiet:
-        click.echo(f"forwarded id={data.get('id', '?')}")
+            emit_json(data)
+        elif not quiet:
+            click.echo(f"forwarded id={data.get('id', '?')}")

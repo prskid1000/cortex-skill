@@ -1,18 +1,20 @@
 # `claw browser` — Chromium Launcher for MCP Debug-Protocol Reference
 
+> Source directory: [scripts/claw/src/claw/browser/](../../scripts/claw/src/claw/browser/)
+
 Single-purpose CLI for launching Edge or Chrome with the remote-debugging port open, so the Chrome DevTools MCP can attach. Handles the `--user-data-dir` footgun, the kill-before-relaunch dance, and emits the WebSocket URL on success.
 
-Library / MCP-side reference: [references/chrome-devtools.md](../chrome-devtools.md).
+Post-launch automation is handled by the Chrome DevTools MCP tool calls (`list_pages`, `new_page`, `navigate_page`, `take_screenshot`, etc.).
 
 ## Contents
 
 - **LAUNCH Chromium with debug port**
-  - [Default profile (preserves cookies/logins)](#11-launch-default) · [Throwaway profile (fast, isolated)](#12-launch-throwaway)
+  - [Default profile (preserves cookies/logins)](#11-launch---profile-default) · [Throwaway profile (fast, isolated)](#12-launch---profile-throwaway)
 - **VERIFY the port is open**
   - [Poll `/json/version` until ready](#21-verify)
 - **STOP the debug instance**
   - [Taskkill the launched process](#31-stop)
-- **When `claw browser` isn't enough** — [escape hatches](#when-claw-isnt-enough)
+- **When `claw browser` isn't enough** — [escape hatches](#when-claw-browser-isnt-enough)
 
 ---
 
@@ -25,12 +27,15 @@ Library / MCP-side reference: [references/chrome-devtools.md](../chrome-devtools
 5. **Help** — `claw browser --help`, `claw browser <verb> --help`, `--examples` prints runnable recipes.
 6. **Readiness polling** — `launch` doesn't return until `http://127.0.0.1:<port>/json/version` returns 200 (or timeout). Default 15 s; override with `--timeout SEC`.
 7. **Platform** — Windows only (matches the rest of claude-claw's scope). The binary-discovery logic looks at `C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe` and `C:\Program Files\Google\Chrome\Application\chrome.exe` by default. Override with `--binary PATH`.
+8. **Common output flags** — every mutating verb here inherits `--force`, `--backup`, `--dry-run`, `--json`, `--quiet`, `--mkdir` from the shared `@common_output_options` decorator. This doc only calls them out when the verb overrides the default semantics; run `claw browser <verb> --help` for the authoritative per-verb flag list.
 
 ---
 
 ## 1. LAUNCH
 
 ### 1.1 `launch --profile default`
+
+> Source: [scripts/claw/src/claw/browser/launch.py](../../scripts/claw/src/claw/browser/launch.py)
 
 Launch with the user's real profile — preserves cookies, logged-in sessions, extensions. Requires killing any existing browser processes first (the profile directory is locked while any tab is open, including background tabs and the system-tray helper).
 
@@ -74,6 +79,8 @@ Output (with `--json`):
 
 ### 1.2 `launch --profile throwaway`
 
+> Source: [scripts/claw/src/claw/browser/launch.py](../../scripts/claw/src/claw/browser/launch.py) (same verb as §1.1, `--profile throwaway`)
+
 Launch with an isolated, temporary profile. No need to kill existing browser processes. Ideal for automated tests, headless-like scraping with JS rendering, or any scenario where logged-in state isn't needed.
 
 ```
@@ -103,6 +110,8 @@ claw browser launch --profile throwaway --port 9333 --browser chrome
 ## 2. VERIFY
 
 ### 2.1 `verify`
+
+> Source: [scripts/claw/src/claw/browser/verify.py](../../scripts/claw/src/claw/browser/verify.py)
 
 Poll `/json/version` until the debug port responds. Used internally by `launch`; exposed for scripting.
 
@@ -134,6 +143,8 @@ claw browser verify --port 9222 || echo "port not open — check the launch"
 
 ### 3.1 `stop`
 
+> Source: [scripts/claw/src/claw/browser/stop.py](../../scripts/claw/src/claw/browser/stop.py)
+
 Gracefully terminate a browser launched by `claw`. Uses `taskkill /PID <pid> /T` (graceful) → 3 s grace → `taskkill /PID <pid> /T /F` (forceful) — the same pattern used in the VoxType services manager.
 
 ```
@@ -161,7 +172,7 @@ Drop into the Chrome DevTools MCP or the raw binary for:
 
 | Use case | Why `claw browser` can't do it | Escape hatch |
 |---|---|---|
-| All browser automation after launch (click, navigate, screenshot, DOM snapshot, network list) | `claw browser` only handles the launch lifecycle | [Chrome DevTools MCP tools](../chrome-devtools.md) — `list_pages`, `new_page`, `navigate_page`, etc. |
+| All browser automation after launch (click, navigate, screenshot, DOM snapshot, network list) | `claw browser` only handles the launch lifecycle | Chrome DevTools MCP tools — `list_pages`, `new_page`, `navigate_page`, `take_screenshot`, etc. |
 | Launch with custom CLI flags (`--disable-gpu`, `--window-size=...`, proxy) | Not wrapped; intentionally minimal | `--extra-flag` is NOT supported — use the binary directly, or file an issue |
 | Firefox remote-debugging | Not Chromium-family | Launch Firefox manually with `-remote-debugging-port` |
 | Headless mode | Not wrapped (MCP prefers headful for anti-bot + visual verification) | Pass `--headless=new` via the raw binary; MCP may have attach issues |
@@ -177,6 +188,30 @@ Drop into the Chrome DevTools MCP or the raw binary for:
 - **`/json/version` returns instantly after launch** — no, it doesn't. The browser takes 500 ms – 3 s to bind the port on a cold start. Use `claw browser verify` or `launch --timeout`.
 - **Throwaway profile temp-dir growth** — each throwaway launch creates a new ~50 MB directory. Always pair with `stop --cleanup` or run `claw browser cleanup` (future verb) to GC orphaned dirs.
 - **`--force` kills BOTH Edge and Chrome if `--browser` chose the wrong one** — it only kills the process matching `--browser`. A running Edge will not be killed by `--force --browser chrome`, but the Chrome launch may still collide on port 9222. Pick a non-colliding port.
+
+---
+
+## Escape hatch — manual browser launch
+
+Drop to the raw binary only when `claw browser` doesn't fit (custom Chromium flags, headless mode, Firefox). Always pair `--remote-debugging-port=9222` with `--user-data-dir=...` — without the data-dir flag the launch silently attaches to an existing instance and the port never opens.
+
+```bash
+# Edge — default profile (kill all Edge processes first; data dir is locked)
+taskkill //F //IM msedge.exe
+"/c/Program Files (x86)/Microsoft/Edge/Application/msedge.exe" \
+  --remote-debugging-port=9222 \
+  --user-data-dir="C:/Users/$USER/AppData/Local/Microsoft/Edge/User Data" &
+
+# Edge — throwaway profile (no kill needed)
+"/c/Program Files (x86)/Microsoft/Edge/Application/msedge.exe" \
+  --remote-debugging-port=9222 --user-data-dir="C:/temp/edge-debug" &
+
+# Chrome — same flags, different binary
+"/c/Program Files/Google/Chrome/Application/chrome.exe" \
+  --remote-debugging-port=9222 --user-data-dir="C:/temp/chrome-debug" &
+```
+
+From PowerShell, prefix the quoted binary path with `&`: `& "C:\Program Files...\msedge.exe" ...`. Plain quoted paths work from bash / Git Bash / MSYS2. `claw browser launch` bypasses this entirely (spawns via `subprocess`, no shell).
 
 ---
 

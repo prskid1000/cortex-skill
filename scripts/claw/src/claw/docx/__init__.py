@@ -16,6 +16,14 @@ VERBS: dict[str, tuple[str, str]] = {
     "footer":        ("claw.docx.footer", "footer"),
     "toc":           ("claw.docx.toc", "toc"),
     "meta":          ("claw.docx.meta", "meta"),
+    "comments":      ("claw.docx.comments_dump", "comments"),
+    "diff":          ("claw.docx.diff", "diff"),
+    "insert":        ("claw.docx.insert_pagebreak", "insert"),
+    "hyperlink":     ("claw.docx.hyperlink_add", "hyperlink"),
+    "style":         ("claw.docx.style", "style"),
+    "section":       ("claw.docx.section", "section"),
+    "custom-xml":    ("claw.docx.custom_xml", "custom_xml"),
+    "table":         ("claw.docx.table_fit", "table"),
 }
 
 

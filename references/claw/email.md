@@ -1,8 +1,10 @@
 # `claw email` — Gmail Send / Reply / Forward / Search Reference
 
+> Source directory: [scripts/claw/src/claw/email/](../../scripts/claw/src/claw/email/)
+
 CLI wrapper around Python `email.mime` + `gws gmail`. Handles RFC 2822 assembly, base64url encoding, threading headers, and attachment MIME-type detection so you don't have to.
 
-Library API for escape hatches: [references/email-reference.md](../email-reference.md) and [references/gws-cli.md § Gmail](../gws-cli.md#gmail).
+Library API for escape hatches: Python stdlib `email.mime` + [references/gws-cli.md § Gmail](../gws-cli.md#gmail). See [When `claw email` Isn't Enough](#when-claw-email-isnt-enough).
 
 ## Contents
 
@@ -16,7 +18,7 @@ Library API for escape hatches: [references/email-reference.md](../email-referen
   - [Gmail search operators, JSON output](#41-search)
 - **DOWNLOAD attachments**
   - [By message + attachment id](#51-download-attachment)
-- **When `claw email` isn't enough** — [escape hatches](#when-claw-isnt-enough)
+- **When `claw email` isn't enough** — [escape hatches](#when-claw-email-isnt-enough)
 
 ---
 
@@ -30,6 +32,7 @@ Library API for escape hatches: [references/email-reference.md](../email-referen
 6. **Help** — `claw email --help`, `claw email <verb> --help`, `--examples` prints runnable recipes, `--progress=json` streams upload progress (relevant for large attachments).
 7. **Encoding** — UTF-8 everywhere. `--subject` and bodies are interpreted as UTF-8 from the command line; non-ASCII subjects are RFC 2047-encoded automatically.
 8. **Auth** — `claw email` uses the `gws` OAuth session. If scopes are missing (`gmail.send`, `gmail.modify`, `gmail.readonly`), the first affected call fails with `code=AUTH_SCOPE` pointing at `claw doctor` for the re-login invocation.
+9. **Common output flags** — every mutating verb inherits `--force`, `--backup`, `--dry-run`, `--json`, `--quiet`, `--mkdir` via the shared `@common_output_options` decorator. Individual verb blocks only call them out when the verb overrides the default; run `claw email <verb> --help` for the authoritative per-verb flag list.
 
 ### Gmail API auth footguns
 
@@ -42,6 +45,8 @@ Library API for escape hatches: [references/email-reference.md](../email-referen
 ## 1. SEND
 
 ### 1.1 `send`
+
+> Source: [scripts/claw/src/claw/email/send.py](../../scripts/claw/src/claw/email/send.py)
 
 Compose and send a new message.
 
@@ -79,6 +84,8 @@ claw email send --to team@example.com --cc boss@example.com \
 
 ### 1.2 `draft`
 
+> Source: [scripts/claw/src/claw/email/draft.py](../../scripts/claw/src/claw/email/draft.py)
+
 Same flag surface as `send`, but creates a Gmail draft instead of sending.
 
 ```
@@ -99,6 +106,8 @@ Output (with `--json`): `{"id": "<DRAFT_ID>", "message": {"id": "<MSG_ID>", "thr
 ## 2. REPLY
 
 ### 2.1 `reply`
+
+> Source: [scripts/claw/src/claw/email/reply.py](../../scripts/claw/src/claw/email/reply.py)
 
 Reply to a specific message, preserving the thread. `claw` fetches the parent's `Message-Id` + `References` and injects them into the new message.
 
@@ -136,6 +145,8 @@ Gmail-silently-breaks-threads note: this verb exists precisely because manual `g
 
 ### 3.1 `forward`
 
+> Source: [scripts/claw/src/claw/email/forward.py](../../scripts/claw/src/claw/email/forward.py)
+
 Forward a message to new recipients. Attachments from the original are re-attached unless `--no-attachments` is set.
 
 ```
@@ -163,6 +174,8 @@ claw email forward 18e2f3a --to dave@example.com \
 ## 4. SEARCH
 
 ### 4.1 `search`
+
+> Source: [scripts/claw/src/claw/email/search.py](../../scripts/claw/src/claw/email/search.py)
 
 Query the mailbox using Gmail's search operators. Returns metadata (no body by default — use `--format full` for the whole payload).
 
@@ -195,6 +208,8 @@ claw email search --q "is:unread subject:(invoice OR receipt)" --format json \
 
 ### 5.1 `download-attachment`
 
+> Source: [scripts/claw/src/claw/email/download_attachment.py](../../scripts/claw/src/claw/email/download_attachment.py)
+
 Save an attachment to disk by message id + attachment id. Attachment ids are returned by `claw email search --format full` under `payload.parts[].body.attachmentId`.
 
 ```
@@ -223,12 +238,17 @@ Drop into the library / raw `gws` for:
 
 | Use case | Why `claw` can't do it | Escape hatch |
 |---|---|---|
-| Bulk mail merge across >100 recipients with per-recipient variables | `send` sends one RFC 2822 per call; no backoff / batching | Python `email.mime` + `gws gmail users messages send` in a loop, with 1s sleep + retry-on-429 — see [email-reference.md § Multiple Attachments Pattern](../email-reference.md#multiple-attachments-pattern) as the starting shape |
+| Bulk mail merge across >100 recipients with per-recipient variables | `send` sends one RFC 2822 per call; no backoff / batching | Python `email.mime` + `gws gmail users messages send` in a loop, with 1s sleep + retry-on-429 |
 | Calendar invites (iCalendar `METHOD:REQUEST`) | Requires `text/calendar` part + `ATTENDEE;RSVP=TRUE` line | Build `MIMEText(ical, "calendar", "utf-8")` + `Content-Type: text/calendar; method=REQUEST` directly |
 | S/MIME signing or PGP-encrypted bodies | No crypto surface | Use `email.mime.multipart` with detached signature part (`multipart/signed`) via `cryptography` / `python-gnupg` |
 | Label mutation (`addLabelIds`, `removeLabelIds`) on fetched messages | Out of scope for `claw email` | [`gws gmail users messages modify`](../gws-cli.md#modify--addremove-labels) |
 | Batch message delete / trash | No bulk verb | [`gws gmail users messages batchModify`](../gws-cli.md#batchmodify--modify-labels-on-multiple-messages) + `trash` |
 | Streaming new-email watcher | Long-running connection | `gws gmail +watch` (NDJSON) — see [gws-cli.md § Ergonomic +helper](../gws-cli.md#ergonomic-helper-commands) |
+
+**`email.mime` (Python stdlib)** — part of Python — [docs](https://docs.python.org/3/library/email.html)
+- Gmail API expects the raw RFC 2822 as `base64url` (urlsafe with no padding stripped) in the `raw` field — `base64.urlsafe_b64encode(msg.as_bytes()).decode()`. Standard `b64encode` with `+`/`/` gets rejected with an opaque `Invalid value for message` error.
+- The modern `email.message.EmailMessage` (3.6+) handles attachments via `add_attachment(data, maintype, subtype, filename=...)`; mixing it with the legacy `MIMEMultipart` / `MIMEBase` shape is what every Gmail tutorial gets wrong — pick one.
+- Gmail caps the base64-encoded message at ~35 MB (~25 MB of raw bytes, ~18 MB of binary attachment); use a Drive upload + share link for anything larger.
 
 ## Footguns
 

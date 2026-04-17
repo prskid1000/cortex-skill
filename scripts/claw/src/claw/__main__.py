@@ -1,8 +1,16 @@
-"""Entry point: `claw ...` → dispatch to lazily-loaded noun groups."""
+"""Entry point: `claw ...` -> dispatch to lazily-loaded noun groups."""
 
 from __future__ import annotations
 
 import sys
+
+# Force UTF-8 on stdout/stderr — Windows legacy cp1252 console chokes on help
+# text that contains unicode arrows / em-dashes. Must run before `click` formats anything.
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[attr-defined]
+    except Exception:
+        pass
 
 import click
 
@@ -49,16 +57,24 @@ def cli(ctx: click.Context) -> None:
 def help_alias(ctx: click.Context, command: tuple[str, ...]) -> None:
     """`claw help <cmd>` — equivalent to `claw <cmd> --help`."""
     if not command:
-        click.echo(ctx.parent.get_help())
+        click.echo(ctx.parent.get_help() if ctx.parent else "")
         return
-    target = cli
+    target: click.Command = cli
+    parent_ctx = ctx.parent
     for c in command:
+        if not isinstance(target, click.Group):
+            click.echo(f"`{' '.join(command[:command.index(c)])}` has no subcommand `{c}`", err=True)
+            sys.exit(2)
         cmd = target.get_command(ctx, c)
         if cmd is None:
             click.echo(f"unknown command: {' '.join(command)}", err=True)
             sys.exit(2)
+        # Build a fresh context per step so the help output shows the full
+        # invocation path (`claw xlsx from-csv`) instead of `claw help`.
+        parent_ctx = click.Context(target, info_name=target.name, parent=parent_ctx)
         target = cmd
-    click.echo(target.get_help(ctx))
+    target_ctx = click.Context(target, info_name=target.name, parent=parent_ctx)
+    click.echo(target.get_help(target_ctx))
 
 
 if __name__ == "__main__":

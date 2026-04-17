@@ -10,34 +10,39 @@ import click
 from claw.common import EXIT_INPUT, common_output_options, die, emit_json, safe_write
 
 
-@click.command(name="new",
-               context_settings={"ignore_unknown_options": True,
-                                 "allow_extra_args": True})
+ASPECT_ALIASES = {
+    "16:9": "16:9",
+    "widescreen": "16:9",
+    "4:3": "4:3",
+    "standard": "4:3",
+}
+
+
+@click.command(name="new")
 @click.argument("out", type=click.Path(path_type=Path))
 @click.option("--template", default=None,
               type=click.Path(exists=True, path_type=Path))
+@click.option("--aspect",
+              type=click.Choice(["16:9", "4:3", "widescreen", "standard"]),
+              default="16:9",
+              show_default=True,
+              help="Slide aspect ratio. widescreen=16:9, standard=4:3.")
 @common_output_options
-@click.pass_context
-def new(ctx: click.Context, out: Path, template: Path | None,
+def new(out: Path, template: Path | None, aspect: str,
         force: bool, backup: bool, as_json: bool, dry_run: bool,
         quiet: bool, verbose: bool, mkdir: bool) -> None:
     """Create a blank .pptx (optionally from a template)."""
     try:
         from pptx import Presentation
-        from pptx.util import Emu
+        from pptx.util import Inches
     except ImportError:
         die("python-pptx not installed", code=EXIT_INPUT,
             hint="uv tool install 'claw[pptx]'", as_json=as_json)
 
-    aspect = "16:9"
-    for arg in ctx.args:
-        if arg == "--4:3":
-            aspect = "4:3"
-        elif arg == "--16:9":
-            aspect = "16:9"
+    aspect_norm = ASPECT_ALIASES[aspect]
 
     if dry_run:
-        click.echo(f"would write {out} ({aspect})"
+        click.echo(f"would write {out} ({aspect_norm})"
                    + (f" from {template}" if template else ""))
         return
 
@@ -56,12 +61,12 @@ def new(ctx: click.Context, out: Path, template: Path | None,
         prs = Presentation()
 
     if not template:
-        if aspect == "16:9":
-            prs.slide_width = Emu(12192000)
-            prs.slide_height = Emu(6858000)
+        if aspect_norm == "16:9":
+            prs.slide_width = Inches(13.333)
+            prs.slide_height = Inches(7.5)
         else:
-            prs.slide_width = Emu(9144000)
-            prs.slide_height = Emu(6858000)
+            prs.slide_width = Inches(10)
+            prs.slide_height = Inches(7.5)
 
     def _save(f):
         prs.save(f)
@@ -69,7 +74,7 @@ def new(ctx: click.Context, out: Path, template: Path | None,
     safe_write(out, _save, force=force, backup=backup, mkdir=mkdir)
 
     if as_json:
-        emit_json({"path": str(out), "aspect": aspect,
+        emit_json({"path": str(out), "aspect": aspect_norm,
                    "template": str(template) if template else None})
     elif not quiet:
         click.echo(f"wrote {out}")

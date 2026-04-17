@@ -9,6 +9,7 @@ VERBS: dict[str, tuple[str, str]] = {
     "book":           ("claw.convert.book", "book"),
     "md2pdf-nolatex": ("claw.convert.md2pdf_nolatex", "md2pdf_nolatex"),
     "slides":         ("claw.convert.slides", "slides"),
+    "list-formats":   ("claw.convert.list_formats", "list_formats"),
 }
 
 

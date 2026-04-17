@@ -5,9 +5,9 @@
 ## Contents
 
 - **ADD a verb to an existing noun**
-  - [Files to touch](#files-to-touch-new-verb) · [Verb module shape](#verb-module-shape) · [Register in `__init__.py`](#register-in-initpy) · [Document it](#document-it) · [Smoke test](#smoke-test)
+  - [Files to touch](#files-to-touch-new-verb) · [Verb module shape](#verb-module-shape) · [Register in `__init__.py`](#register-in-_init_py) · [Document it](#document-it) · [Smoke test](#smoke-test)
 - **ADD a whole new noun**
-  - [Files to touch](#files-to-touch-new-noun) · [Noun package shape](#noun-package-shape) · [Register in `__main__.py`](#register-in-mainpy) · [Declare deps](#declare-deps)
+  - [Files to touch](#files-to-touch-new-noun) · [Noun package shape](#noun-package-shape) · [Register in `__main__.py`](#register-in-_main_py) · [Declare deps](#declare-deps)
 - **FIX a bug in an existing verb**
   - [Fix workflow](#fix-workflow)
 - **ADD / DEPRECATE a flag**

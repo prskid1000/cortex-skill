@@ -5,10 +5,13 @@ import click
 from claw.common import LazyGroup
 
 VERBS: dict[str, tuple[str, str]] = {
-    "create": ("claw.doc.create", "create"),
-    "build":  ("claw.doc.build", "build"),
-    "read":   ("claw.doc.read", "read"),
-    "export": ("claw.doc.export", "export"),
+    "create":    ("claw.doc.create", "create"),
+    "build":     ("claw.doc.build", "build"),
+    "append":    ("claw.doc.append", "append"),
+    "replace":   ("claw.doc.replace", "replace"),
+    "read":      ("claw.doc.read", "read"),
+    "tabs":      ("claw.doc.tabs", "tabs"),
+    "export":    ("claw.doc.export", "export"),
 }
 
 

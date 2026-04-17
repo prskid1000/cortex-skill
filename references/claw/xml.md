@@ -1,8 +1,10 @@
 # `claw xml` — XPath / XSLT / Schema Reference
 
+> Source directory: [scripts/claw/src/claw/xml/](../../scripts/claw/src/claw/xml/)
+
 CLI wrapper around `lxml`. Covers XPath queries, XSLT transforms, schema validation (XSD / RelaxNG / DTD), canonicalization (C14N), streaming iteration for giant XML, and JSON conversion.
 
-Library API for escape hatches: [references/web-parsing.md § lxml](../web-parsing.md#lxml).
+Library API for escape hatches: see [When `claw xml` Isn't Enough](#when-claw-xml-isnt-enough).
 
 ## Contents
 
@@ -20,7 +22,7 @@ Library API for escape hatches: [references/web-parsing.md § lxml](../web-parsi
   - [iterparse with XPath filter](#61-stream-xpath)
 - **CONVERT to JSON**
   - [Lossless or objectify-style JSON](#71-to-json)
-- **When `claw xml` isn't enough** — [escape hatches](#when-claw-isnt-enough)
+- **When `claw xml` isn't enough** — [escape hatches](#when-claw-xml-isnt-enough)
 
 ---
 
@@ -33,12 +35,15 @@ Library API for escape hatches: [references/web-parsing.md § lxml](../web-parsi
 5. **Exit codes** — `0` success (validation: schema-conformant), `1` generic, `2` usage error, `3` partial (multi-file validate: some failed), `4` bad input (malformed XML), `5` system error, `6` validation failure (schema-non-conformant), `130` SIGINT.
 6. **Help** — `claw xml --help`, `claw xml <verb> --help`, `--examples` prints runnable recipes, `--progress=json` streams one NDJSON line per top-level element during `stream-xpath`.
 7. **Namespaces** — pass `--ns PREFIX=URI` (repeatable) to declare namespaces used in the XPath. Without this, `//ns:foo` queries against namespaced docs silently return zero hits.
+8. **Common output flags** — every mutating verb inherits `--force`, `--backup`, `--dry-run`, `--json`, `--quiet`, `--mkdir` via the shared `@common_output_options` decorator. Individual verb blocks only call them out when the verb overrides the default; run `claw xml <verb> --help` for the authoritative per-verb flag list.
 
 ---
 
 ## 1. QUERY (XPath)
 
 ### 1.1 `xpath`
+
+> Source: [scripts/claw/src/claw/xml/xpath.py](../../scripts/claw/src/claw/xml/xpath.py)
 
 Run an XPath 1.0 expression against the document.
 
@@ -78,6 +83,8 @@ claw xml xpath soap.xml "//soap:Body/*" --ns soap=http://schemas.xmlsoap.org/soa
 
 ### 2.1 `xslt`
 
+> Source: [scripts/claw/src/claw/xml/xslt.py](../../scripts/claw/src/claw/xml/xslt.py)
+
 Apply an XSLT 1.0 stylesheet.
 
 ```
@@ -108,6 +115,8 @@ XSLT 2.0 / 3.0: `lxml` only supports 1.0. Use Saxon via `saxon-b` CLI for 2.0/3.
 ## 3. VALIDATE
 
 ### 3.1 `validate`
+
+> Source: [scripts/claw/src/claw/xml/validate.py](../../scripts/claw/src/claw/xml/validate.py)
 
 Validate an XML document against a schema. Exactly one of `--xsd` / `--rng` / `--rnc` / `--dtd` / `--sch`.
 
@@ -140,6 +149,8 @@ Exit code 6 on validation failure (vs exit 0 on pass), for CI scripting.
 
 ### 4.1 `canonicalize`
 
+> Source: [scripts/claw/src/claw/xml/canonicalize.py](../../scripts/claw/src/claw/xml/canonicalize.py)
+
 Emit the C14N canonical form of the document — required for XML signatures, diffing, and hashing.
 
 ```
@@ -166,6 +177,8 @@ claw xml canonicalize signed.xml --version 2.0 --out canonical.xml
 
 ### 5.1 `fmt`
 
+> Source: [scripts/claw/src/claw/xml/fmt.py](../../scripts/claw/src/claw/xml/fmt.py)
+
 Pretty-print an XML document.
 
 ```
@@ -191,6 +204,8 @@ claw xml fmt raw.xml --indent 2 --sort-attrs --declaration --out formatted.xml
 ## 6. STREAM
 
 ### 6.1 `stream-xpath`
+
+> Source: **NOT IMPLEMENTED** — no `xml/stream_xpath.py` exists.
 
 Process multi-GB XML without loading it all. Uses `lxml.etree.iterparse` with memory clearing after each top-level element.
 
@@ -220,6 +235,8 @@ This runs at near-disk-read speed with constant memory.
 
 ### 7.1 `to-json`
 
+> Source: [scripts/claw/src/claw/xml/to_json.py](../../scripts/claw/src/claw/xml/to_json.py)
+
 Convert XML to JSON. Two styles:
 
 ```
@@ -248,15 +265,20 @@ claw xml to-json config.xml --objectify | jq '.database.host'
 
 Drop into `lxml` directly for:
 
-| Use case | Why `claw` can't do it | Library anchor |
+| Use case | Why `claw` can't do it | Escape hatch |
 |---|---|---|
 | XPath 2.0 / 3.0 features (sequences, regex, date arithmetic) | `lxml` is 1.0-only; `claw` inherits that limit | Use Saxon HE (`saxon-b`) CLI or Python bindings |
-| Schematron validation | Not wrapped (`--sch` is reserved for future; currently stubs to `code=NOT_IMPLEMENTED`) | [web-parsing.md § Schematron](../web-parsing.md#schematron) |
-| XSLT with Python extension functions | No plugin mechanism in CLI | [web-parsing.md § XSLT](../web-parsing.md#xslt-transformations) with `etree.XSLT.registerFunction` |
-| Custom element classes / ObjectPath walks | Programmatic only | [web-parsing.md § Custom Element Classes](../web-parsing.md#custom-element-classes) |
+| Schematron validation | Not wrapped (`--sch` is reserved for future; currently stubs to `code=NOT_IMPLEMENTED`) | `lxml.isoschematron.Schematron` |
+| XSLT with Python extension functions | No plugin mechanism in CLI | `etree.XSLT.registerFunction` |
+| Custom element classes / ObjectPath walks | Programmatic only | `lxml.objectify` + `ElementDefaultClassLookup` |
 | XInclude processing | Not wrapped | `lxml.etree.ElementTree.xinclude()` |
 | Digital signature sign/verify (xmldsig) | Out of scope | `signxml` library |
 | Content-aware merging of two XML trees | No merge verb | `xmldiff` CLI or programmatic tree walk |
+
+**lxml** — `pip install lxml` · [docs](https://lxml.de/)
+- XPath 1.0 only — no sequences, no regex, no date functions; reach for Saxon if you need XPath/XSLT 2.0+.
+- `//foo` against a document with a default namespace (`xmlns="..."`) returns zero hits; XPath 1.0 has no default-namespace syntax — declare a prefix and use `//n:foo`.
+- `etree.parse()` with `resolve_entities=True` is a file-disclosure / billion-laughs vector on attacker-controlled XML; keep defaults.
 
 ## Footguns
 

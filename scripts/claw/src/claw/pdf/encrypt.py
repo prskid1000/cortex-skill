@@ -11,21 +11,52 @@ from claw.common import common_output_options, die, emit_json, safe_write
 PERMS = ("print", "copy", "modify", "annotate", "fill-forms", "assemble", "print-high")
 
 
-def _build_permissions(allow: str | None, deny: str | None):
-    from pypdf.constants import UserAccessPermissions as UAP
+def _perm_map() -> dict[str, int]:
+    """Resolve pypdf's UserAccessPermissions bits across versions.
 
-    mapping = {
-        "print": UAP.PRINT,
-        "copy": UAP.EXTRACT,
-        "modify": UAP.MODIFY,
-        "annotate": UAP.ADD_OR_MODIFY,
-        "fill-forms": UAP.FILL_FORM_FIELDS,
-        "assemble": UAP.ASSEMBLE_DOC,
-        "print-high": UAP.PRINT_TO_REPRESENTATION,
+    Newer pypdf (4.x+) exposes members like PRINT, EXTRACT, MODIFY, etc.
+    Older pypdf used slightly different names. Fallback to raw PDF 1.7 bit values.
+    """
+    try:
+        from pypdf.constants import UserAccessPermissions as P
+    except ImportError:
+        die("pypdf not installed; install: pip install 'claw[pdf]'")
+
+    return {
+        "print":      int(getattr(P, "PRINT", 4)),
+        "copy":       int(getattr(P, "EXTRACT", getattr(P, "COPY", 16))),
+        "modify":     int(getattr(P, "MODIFY", 8)),
+        "annotate":   int(getattr(P, "ADD_OR_MODIFY", getattr(P, "ANNOTATE", 32))),
+        "fill-forms": int(getattr(P, "FILL_FORM_FIELDS", 256)),
+        "assemble":   int(getattr(P, "ASSEMBLE_DOC", getattr(P, "ASSEMBLE", 1024))),
+        "print-high": int(getattr(P, "PRINT_TO_REPRESENTATION",
+                                  getattr(P, "PRINT_HIGH_QUALITY", 2048))),
     }
+
+
+def _all_allowed() -> int:
+    """Bitmask with all user-relevant permission bits set.
+
+    PDF 1.7: bits 1-2 are reserved (must be 0), bits 7-8 reserved (must be 1),
+    bits 13-32 reserved. The canonical "allow everything" literal is 0xFFFFFFFC
+    (all bits set except the two reserved-zero bits).
+    """
+    try:
+        from pypdf.constants import UserAccessPermissions as P
+        for name in ("all", "ALL"):
+            fn = getattr(P, name, None)
+            if callable(fn):
+                return int(fn())
+    except ImportError:
+        pass
+    return 0xFFFFFFFC
+
+
+def _build_permissions(allow: str | None, deny: str | None) -> int:
+    mapping = _perm_map()
     if allow:
         names = [x.strip() for x in allow.split(",") if x.strip()]
-        flags = UAP(0)
+        flags = 0
         for n in names:
             if n not in mapping:
                 die(f"unknown permission: {n}; valid: {', '.join(mapping)}")
@@ -33,13 +64,13 @@ def _build_permissions(allow: str | None, deny: str | None):
         return flags
     if deny:
         names = [x.strip() for x in deny.split(",") if x.strip()]
-        flags = UAP.R2 | UAP.R3
+        flags = _all_allowed()
         for n in names:
             if n not in mapping:
                 die(f"unknown permission: {n}; valid: {', '.join(mapping)}")
             flags &= ~mapping[n]
         return flags
-    return UAP(0)
+    return 0
 
 
 @click.command(name="encrypt")

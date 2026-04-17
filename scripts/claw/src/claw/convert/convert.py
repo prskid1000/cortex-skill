@@ -40,6 +40,8 @@ from claw.common import (
 @click.option("--number-sections", is_flag=True)
 @click.option("--metadata", "metadata", multiple=True)
 @click.option("--variable", "variables", multiple=True)
+@click.option("--defaults", "defaults_file", default=None, type=click.Path(path_type=Path),
+              help="Forward a pandoc defaults YAML file.")
 @common_output_options
 @click.pass_context
 def convert(ctx: click.Context, src: Path, dst: Path, fmt_from: str | None, fmt_to: str | None,
@@ -49,6 +51,7 @@ def convert(ctx: click.Context, src: Path, dst: Path, fmt_from: str | None, fmt_
             bib: Path | None, csl: Path | None, engine: str | None,
             highlight_style: str | None, number_sections: bool,
             metadata: tuple[str, ...], variables: tuple[str, ...],
+            defaults_file: Path | None,
             force: bool, backup: bool, as_json: bool, dry_run: bool,
             quiet: bool, verbose: bool, mkdir: bool) -> None:
     """Convert <src> → <dst> via pandoc."""
@@ -61,8 +64,11 @@ def convert(ctx: click.Context, src: Path, dst: Path, fmt_from: str | None, fmt_
         sys.stderr.write("warning: --bib passed without --citeproc (silently ignored by pandoc)\n")
     if mathjax and katex:
         die("--mathjax and --katex are mutually exclusive", code=2, as_json=as_json)
+    if defaults_file and not defaults_file.exists():
+        die(f"--defaults file not found: {defaults_file}", code=2, as_json=as_json)
 
     args: list[str] = [str(src)]
+    if defaults_file: args += ["--defaults", str(defaults_file)]
     if fmt_from: args += ["--from", fmt_from]
     if fmt_to:   args += ["--to", fmt_to]
     if standalone:        args.append("--standalone")

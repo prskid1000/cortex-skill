@@ -1,5 +1,7 @@
 # `claw doc` — Google Docs Operations Reference
 
+> Source directory: [scripts/claw/src/claw/doc/](../../scripts/claw/src/claw/doc/)
+
 CLI wrapper over `gws docs` for Google Docs work. Absorbs the 100-line markdown → `batchUpdate` builder pattern, handles the `tabId` + Windows-command-line chunking gotchas, and exports to multiple formats in a single verb.
 
 Library API for escape hatches: [references/gws-cli.md § Docs](../gws-cli.md#docs).
@@ -14,9 +16,8 @@ Library API for escape hatches: [references/gws-cli.md § Docs](../gws-cli.md#do
   - [Dump text / JSON / markdown](#31-read) · [List tabs](#32-tabs-list)
 - **EXPORT to another format**
   - [PDF / DOCX / HTML / Markdown / plain text](#41-export)
-- **SHARE the doc**
-  - [Grant permission shortcut](#51-share)
-- **When `claw doc` isn't enough** — [escape hatches](#when-claw-isnt-enough)
+- **SHARE the doc** — use [`claw sheet share`](sheet.md#31-share) (Drive permissions work on any file — Docs included)
+- **When `claw doc` isn't enough** — [escape hatches](#when-claw-doc-isnt-enough)
 
 ---
 
@@ -29,12 +30,15 @@ Library API for escape hatches: [references/gws-cli.md § Docs](../gws-cli.md#do
 5. **Exit codes** — `0` success, `1` generic, `2` usage error, `3` partial (one chunk of a multi-chunk `batchUpdate` failed), `4` bad input / missing file, `5` API / auth error, `130` SIGINT.
 6. **Help** — `claw doc --help`, `claw doc <verb> --help`, `--examples` prints runnable recipes, `--progress=json` streams one NDJSON line per chunk submitted.
 7. **Tab content fetch** — `read` and `export` both pass `includeTabsContent: true` transparently. Without it, newly created docs return an empty body from the API. Never manually hit `documents.get` for new docs without this flag.
+8. **Common output flags** — every mutating verb inherits `--force`, `--backup`, `--dry-run`, `--json`, `--quiet`, `--mkdir` via the shared `@common_output_options` decorator. Individual verb blocks only call them out when the verb overrides the default; run `claw doc <verb> --help` for the authoritative per-verb flag list.
 
 ---
 
 ## 1. CREATE
 
 ### 1.1 `create`
+
+> Source: [scripts/claw/src/claw/doc/create.py](../../scripts/claw/src/claw/doc/create.py)
 
 Create a new Google Doc. Optionally populate from markdown and share in one shot.
 
@@ -73,6 +77,8 @@ Output (with `--json`):
 ## 2. BUILD / POPULATE
 
 ### 2.1 `build`
+
+> Source: [scripts/claw/src/claw/doc/build.py](../../scripts/claw/src/claw/doc/build.py)
 
 Apply a markdown file to an existing Doc. Maps markdown blocks → `batchUpdate` requests:
 
@@ -117,6 +123,8 @@ claw doc build 1Abc... --from appendix.md --tab t.1 --append
 
 ### 2.2 `append`
 
+> Source: **NOT IMPLEMENTED** — no `doc/append.py` exists.
+
 Simpler than `build` — append a text paragraph (or a whole file) to the tab.
 
 ```
@@ -130,6 +138,8 @@ claw doc append 1Abc... --text "Reviewed $(date -I)."
 ```
 
 ### 2.3 `replace`
+
+> Source: **NOT IMPLEMENTED** — no `doc/replace.py` exists.
 
 Find-and-replace across the doc (wraps `replaceAllText` request).
 
@@ -148,6 +158,8 @@ claw doc replace 1Abc... --find "{{QUARTER}}" --with "Q3 2025"
 ## 3. READ
 
 ### 3.1 `read`
+
+> Source: [scripts/claw/src/claw/doc/read.py](../../scripts/claw/src/claw/doc/read.py)
 
 Dump the doc content. Defaults to plain text. Always passes `includeTabsContent: true`.
 
@@ -175,6 +187,8 @@ claw doc read 1Abc... --format json | jq '.tabs[0].documentTab.body.content | le
 
 ### 3.2 `tabs list`
 
+> Source: **NOT IMPLEMENTED** — no `doc/tabs.py` / `doc/tabs_list.py` exists.
+
 List all tabs in a doc.
 
 ```
@@ -188,6 +202,8 @@ Output: `[{tab_id, title, index}, ...]`.
 ## 4. EXPORT
 
 ### 4.1 `export`
+
+> Source: [scripts/claw/src/claw/doc/export.py](../../scripts/claw/src/claw/doc/export.py)
 
 Export the whole doc to a downloadable format via `drive.files.export`.
 
@@ -219,32 +235,6 @@ claw doc export 1Abc... --as pdf --out /tmp/report.pdf
 
 ```
 claw doc export 1Abc... --as docx --out /tmp/report.docx --force
-```
-
----
-
-## 5. SHARE
-
-### 5.1 `share`
-
-Grant Drive permissions on the doc. Thin shortcut over `claw sheet share` (same flag surface).
-
-```
-claw doc share <doc-id> (--user EMAIL --role reader|commenter|writer
-                         | --domain DOMAIN --role reader|...
-                         | --anyone --role reader)
-                        [--notify] [--message STR] [--json]
-```
-
-Examples:
-
-```
-claw doc share 1Abc... --user alice@example.com --role writer --notify \
-  --message "Please review by Friday."
-```
-
-```
-claw doc share 1Abc... --anyone --role reader
 ```
 
 ---

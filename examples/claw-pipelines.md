@@ -33,6 +33,8 @@
 
 ## DB to Styled XLSX + PDF to Drive to Gmail
 
+> Step types: `shell` · [xlsx.from-json](../scripts/claw/src/claw/xlsx/from_json.py) · `xlsx.to-pdf` (**NOT IMPLEMENTED**) · [sheet.upload](../scripts/claw/src/claw/sheet/upload.py) · `doc.upload` (**NOT IMPLEMENTED**) · [email.send](../scripts/claw/src/claw/email/send.py)
+
 The marquee recipe. Queries a database, builds a styled Excel workbook with a chart, renders a PDF summary, uploads both to Google Drive, and emails them as attachments. Replaces the ~200-line Python orchestration in the original [data-pipelines.md](../references/claw/pipeline.md) full-pipeline example with declarative YAML.
 
 **Outputs:**
@@ -149,6 +151,8 @@ claw pipeline run recipe.yaml --var quarter=Q4
 
 ## CSV to Styled XLSX to Google Sheet
 
+> Step types: [xlsx.from-csv](../scripts/claw/src/claw/xlsx/from_csv.py) · `xlsx.style` (**NOT IMPLEMENTED**) · [sheet.upload](../scripts/claw/src/claw/sheet/upload.py)
+
 Turns a local CSV into a branded XLSX and uploads it as a native Google Sheet shared with a public read-only link. Replaces [data-pipelines.md § CSV → Styled Excel → Google Sheets](../references/claw/pipeline.md).
 
 **Outputs:**
@@ -202,6 +206,8 @@ steps:
 
 ## Scheduled DB Snapshot to Google Sheet
 
+> Step types: `shell` · [sheet.upload](../scripts/claw/src/claw/sheet/upload.py)
+
 Daily DB snapshot that overwrites a fixed Google Sheet in place (useful for dashboard data sources). Designed to be triggered by cron / scheduled task.
 
 **Outputs:**
@@ -248,6 +254,8 @@ steps:
 ---
 
 ## PDF Tables to Multi-Sheet XLSX to PDF Summary
+
+> Step types: [pdf.extract-tables](../scripts/claw/src/claw/pdf/extract_tables.py) · [xlsx.from-json](../scripts/claw/src/claw/xlsx/from_json.py) · `xlsx.to-pdf` (**NOT IMPLEMENTED**)
 
 Extracts every table in a multi-page PDF (one sheet per page), styles them, and produces a landscape PDF summary of the structured output. Replaces [data-pipelines.md § PDF → Extract Tables → Excel](../references/claw/pipeline.md) + [XLSX → PDF](../references/claw/pipeline.md).
 
@@ -296,6 +304,8 @@ steps:
 ---
 
 ## HTML Page to XLSX to Email
+
+> Step types: [web.fetch](../scripts/claw/src/claw/web/fetch.py) · `xlsx.from-html` (**NOT IMPLEMENTED**) · `xlsx.style` (**NOT IMPLEMENTED**) · [email.send](../scripts/claw/src/claw/email/send.py)
 
 Fetches a web page, pulls every `<table>` into a workbook, and mails the result to a distribution list. Useful for scraping published numbers from regulator / exchange / partner pages.
 
@@ -358,6 +368,8 @@ steps:
 
 ## JSON API to Flattened XLSX to Drive
 
+> Step types: [web.fetch](../scripts/claw/src/claw/web/fetch.py) · [xlsx.from-json](../scripts/claw/src/claw/xlsx/from_json.py) · [sheet.upload](../scripts/claw/src/claw/sheet/upload.py)
+
 Hits a JSON endpoint, flattens nested records into a wide-table XLSX, and uploads to a designated Drive folder. `web.fetch` caches the response so retries don't hammer the API.
 
 **Outputs:**
@@ -408,6 +420,8 @@ steps:
 ---
 
 ## Google Sheet Download, Enrich, Upload Back
+
+> Step types: [sheet.download](../scripts/claw/src/claw/sheet/download.py) · `xlsx.sql` (**NOT IMPLEMENTED**) · [xlsx.conditional](../scripts/claw/src/claw/xlsx/conditional.py) · [sheet.upload](../scripts/claw/src/claw/sheet/upload.py)
 
 Downloads an existing Google Sheet, adds a computed "Status" column based on a revenue threshold, and uploads the modified content back to the same file id. Replaces [data-pipelines.md § Google Sheet → download → modify → upload back](../references/claw/pipeline.md).
 
@@ -468,6 +482,8 @@ steps:
 
 ## Excel to SQL Transform to Styled XLSX
 
+> Step types: `xlsx.sql` (**NOT IMPLEMENTED**) · `xlsx.style` (**NOT IMPLEMENTED**) · [xlsx.chart](../scripts/claw/src/claw/xlsx/chart.py)
+
 Run a DuckDB SQL transform over existing sheets (grouping, joins, aggregates) and emit a fresh styled workbook without leaving the `claw` substrate.
 
 **Outputs:**
@@ -525,6 +541,8 @@ steps:
 
 ## Markdown to HTML + PDF + DOCX + EPUB
 
+> Step types: `convert.any` uses [convert convert](../scripts/claw/src/claw/convert/convert.py) (note: the step-type alias `convert.any` in these recipes is aspirational; in the pipeline runner, use the verb name directly)
+
 A single markdown source, four output formats in parallel — useful for documentation releases. Replaces the scattered per-format recipes in [document-conversion.md](../references/claw/pipeline.md).
 
 **Outputs:**
@@ -580,6 +598,8 @@ All four steps have no `needs:`, so they run in parallel up to `--jobs`.
 
 ## Slide Deck Build: Outline to PPTX + PDF + Images
 
+> Step types: `pptx.from-outline` (**NOT IMPLEMENTED**) · [convert convert](../scripts/claw/src/claw/convert/convert.py) · [pdf.render](../scripts/claw/src/claw/pdf/render.py)
+
 Builds a branded slide deck from a markdown outline, exports to PDF, and rasterizes each slide to PNG for embedding in docs / emails / thumbnails.
 
 **Outputs:**
@@ -626,6 +646,8 @@ steps:
 ---
 
 ## Photo Batch: Strip EXIF + Resize + Watermark + Upload
+
+> Step types: [img.batch](../scripts/claw/src/claw/img/batch.py) · `shell` · [sheet.upload](../scripts/claw/src/claw/sheet/upload.py)
 
 A classic photographer pipeline: auto-rotate, strip identifying EXIF, resize to web-friendly dimensions, watermark, and upload the result to a shared Drive folder.
 
@@ -677,6 +699,8 @@ steps:
 ---
 
 ## Video Trim + Compress + Thumbnail Contact Sheet
+
+> Step types: [media.trim](../scripts/claw/src/claw/media/trim.py) · [media.compress](../scripts/claw/src/claw/media/compress.py) · [media.thumbnail](../scripts/claw/src/claw/media/thumbnail.py)
 
 Snap a range out of a long recording, compress it to a target size, and produce a 4×4 contact sheet for the trimmed clip. Useful for sharing a segment over Slack / email.
 

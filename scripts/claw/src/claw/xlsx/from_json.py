@@ -15,7 +15,8 @@ from claw.common import (
 @click.command(name="from-json")
 @click.argument("out", type=click.Path(path_type=Path))
 @click.option("--data", "data_src", required=True, help="JSON file or - for stdin.")
-@click.option("--sheet", default="Data")
+@click.option("-s", "--sheet", default="Data",
+              help="Sheet name to write the rows into.")
 @click.option("--flatten", is_flag=True, help="Flatten nested objects using dot notation.")
 @common_output_options
 def from_json(out: Path, data_src: str, sheet: str, flatten: bool,

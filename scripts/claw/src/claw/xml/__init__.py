@@ -11,6 +11,7 @@ VERBS: dict[str, tuple[str, str]] = {
     "canonicalize": ("claw.xml.canonicalize", "canonicalize"),
     "fmt":          ("claw.xml.fmt", "fmt"),
     "to-json":      ("claw.xml.to_json", "to_json"),
+    "stream-xpath": ("claw.xml.stream_xpath", "stream_xpath"),
 }
 
 

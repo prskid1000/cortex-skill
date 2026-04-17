@@ -6,6 +6,8 @@ from claw.common import LazyGroup
 
 VERBS: dict[str, tuple[str, str]] = {
     "launch": ("claw.browser.launch", "launch"),
+    "verify": ("claw.browser.verify", "verify"),
+    "stop":   ("claw.browser.stop", "stop"),
 }
 
 

@@ -1,5 +1,7 @@
 # `claw completion` — Shell Completions
 
+> Source: [scripts/claw/src/claw/completion.py](../../scripts/claw/src/claw/completion.py)
+
 `claw completion` emits a source-able completion script for the shell you pick. Completions cover nouns, verbs, all declared flags, positional file arguments (TAB expands files), and enumerated values (e.g. `--color auto|always|never`). Dynamic values that would require a subprocess per keystroke (Gmail message IDs, Drive file IDs, pipeline step names) are intentionally left out.
 
 ## Contents

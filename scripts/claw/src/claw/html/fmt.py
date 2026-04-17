@@ -11,11 +11,27 @@ from claw.common import (
 )
 
 
+def _reindent(text: str, n: int) -> str:
+    """Re-indent BS4 prettify() output from its hard-coded 1-space indent to N.
+
+    Assumes the input uses leading spaces only (no tabs) and that each
+    hierarchy level adds exactly one space — which is what
+    `BeautifulSoup.prettify()` produces.
+    """
+    out: list[str] = []
+    for line in text.splitlines():
+        stripped = line.lstrip(" ")
+        depth = len(line) - len(stripped)
+        out.append(" " * (depth * n) + stripped)
+    return "\n".join(out)
+
+
 @click.command(name="fmt")
 @click.argument("src")
 @click.option("--formatter", default="minimal",
               type=click.Choice(["minimal", "html", "html5", "none"]))
-@click.option("--indent", default=2, type=int)
+@click.option("--indent", default=2, type=int,
+              help="Spaces per hierarchy level (default 2).")
 @click.option("--in-place", is_flag=True)
 @click.option("--out", default=None, type=click.Path(path_type=Path))
 @common_output_options
@@ -39,13 +55,7 @@ def fmt(src: str, formatter: str, indent: int, in_place: bool, out: Path | None,
     result = soup.prettify(formatter=fmt_arg)
 
     if indent != 1 and formatter != "none":
-        pad = " " * indent
-        out_lines = []
-        for line in result.split("\n"):
-            stripped = line.lstrip(" ")
-            depth = len(line) - len(stripped)
-            out_lines.append(pad * depth + stripped)
-        result = "\n".join(out_lines)
+        result = _reindent(result, indent)
 
     dst = Path(src) if in_place and src != "-" else out
     if dst is None or str(dst) == "-":
