@@ -7,7 +7,7 @@ description: >
 
 # Claude Claw — Productivity OS
 
-- [Bootstrap](#bootstrap) · [Workflow](#workflow) · [Windows Notes](#windows-notes) · [Templates](#templates) · [Scripts](#scripts)
+- [Bootstrap](#bootstrap) · [Workflow](#workflow) · [Templates](#templates) · [Scripts](#scripts)
 
 ## Bootstrap
 
@@ -18,25 +18,6 @@ python ~/.claude/skills/claude-claw/scripts/healthcheck.py
 ## Workflow
 
 `Source -> Transform (Python) -> Output (/tmp/) -> Deliver (gws)`
-
-## Windows Notes
-
-On Windows, npm/scoop/winget-installed CLIs are `.cmd`/`.bat` shims that `subprocess.run(["tool", ...])` cannot find directly. Always resolve the full path with `shutil.which()` first:
-
-```python
-import shutil, subprocess
-
-def run(tool: str, *args: str, **kwargs):
-    """Run any CLI tool, resolving Windows .cmd shims via PATH."""
-    bin_path = shutil.which(tool)
-    if not bin_path:
-        raise FileNotFoundError(f"{tool} not in PATH")
-    return subprocess.run([bin_path, *args], capture_output=True, text=True, **kwargs)
-
-# Works for gws, clickup, npx, pandoc, magick, ffmpeg, etc.
-run("gws", "drive", "files", "list")
-run("clickup", "task", "view", "ABC-123")
-```
 
 ## File Map
 
@@ -334,3 +315,4 @@ run("clickup", "task", "view", "ABC-123")
 - [wrappers/claudedl.bat](scripts/wrappers/claudedl.bat) — Claude Desktop launcher + dynamic MSIX path + local-model env
 - [wrappers/codexl.bat](scripts/wrappers/codexl.bat) — Codex CLI in OSS mode
 - [patchers/lm-studio-white-tray.py](scripts/patchers/lm-studio-white-tray.py) — LM Studio white tray icon patcher (on-demand apply/restore)
+- [patchers/md-section-patcher.py](scripts/patchers/md-section-patcher.py) — generic idempotent markdown-section injector (used by setup.md to maintain the `claude-claw` block in `~/.claude/CLAUDE.md`)
