@@ -228,14 +228,14 @@ def _dispatch(doc_id: str, requests: list[dict], chunk_size: int,
         body = json.dumps({"requests": chunk}, ensure_ascii=False)
         proc = gws_run("docs", "documents", "batchUpdate",
                        "--params", json.dumps({"documentId": doc_id}),
-                       "--json", body)
+                       "--json", body, check=False)
         if proc.returncode != 0:
             raise RuntimeError(f"chunk starting at index {i} failed: {proc.stderr.strip()}")
         last_ok = i
         if verbose:
             click.echo(f"chunk {i}..{i + len(chunk) - 1} ok", err=True)
         i += chunk_size
-        time.sleep(0.1)
+        time.sleep(0.5)
     return last_ok
 
 
@@ -276,7 +276,15 @@ def _build_and_dispatch(doc_id: str, source: str, tab_id: str, *,
     md = Path(source).read_text(encoding="utf-8")
     blocks = _blocks_from_md(md)
     start_index = 1
-    if not append:
+    if append:
+        get = gws_run("docs", "documents", "get",
+                      "--params", json.dumps({"documentId": doc_id, "includeTabsContent": True}))
+        if get.returncode == 0:
+            data = json.loads(get.stdout)
+            body = _find_tab_body(data, tab_id)
+            if body:
+                start_index = max(_max_end_index(body) - 1, 1)
+    else:
         get = gws_run("docs", "documents", "get",
                       "--params", json.dumps({"documentId": doc_id, "includeTabsContent": True}))
         if get.returncode == 0:
@@ -406,7 +414,7 @@ def _max_end_index(body: dict) -> int:
 @click.option("--replace-all", is_flag=True)
 @click.option("--force-clear", is_flag=True,
               help="Delete embedded tables / inline / positioned objects before clearing text.")
-@click.option("--chunk-size", default=8, type=int)
+@click.option("--chunk-size", default=4, type=int)
 @click.option("--from-index", default=0, type=int)
 @common_output_options
 def build(doc_id, source, tab_id, append, replace_all, force_clear,

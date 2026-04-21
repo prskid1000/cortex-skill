@@ -21,40 +21,39 @@ _CACHED_NODE_ARGS: list[str] | None = None
 
 
 def _resolve_node_args() -> list[str]:
-    """Return `[node, run-gws.js]` argv prefix; raise if gws isn't installed."""
+    """Return `[node, run.js]` or `[gws.exe]` argv prefix."""
     global _CACHED_NODE_ARGS
     if _CACHED_NODE_ARGS is not None:
         return list(_CACHED_NODE_ARGS)
 
-    gws = shutil.which("gws")
-    if not gws:
-        raise FileNotFoundError(
-            "required external tool `gws` not found on PATH. "
-            "Install: npm install -g @googleworkspace/cli. "
-            "Then `gws auth login` to grant scopes."
-        )
+    gws_shim = shutil.which("gws")
+    if not gws_shim:
+        raise FileNotFoundError("gws not found on PATH")
 
     node = shutil.which("node")
-    if not node:
-        raise FileNotFoundError(
-            "`node` not on PATH; `gws` requires Node.js. Install Node 18+."
-        )
-
-    gws_path = Path(gws).resolve()
+    gws_path = Path(gws_shim).resolve()
+    
+    # Candidates for the actual binary or JS entry point
     candidates = [
-        gws_path.parent / "node_modules" / "@googleworkspace" / "cli" / "run-gws.js",
+        # Relative to shim (local install)
+        gws_path.parent / "node_modules" / "@googleworkspace" / "cli" / "bin" / "gws.exe",
+        gws_path.parent / "node_modules" / "@googleworkspace" / "cli" / "run.js",
+        # Global install path discovered
+        Path(r"C:\Users\prith\AppData\Local\nvm\v22.20.0\node_modules\@googleworkspace\cli\bin\gws.exe"),
+        Path(r"C:\Users\prith\AppData\Local\nvm\v22.20.0\node_modules\@googleworkspace\cli\run.js"),
     ]
-    env = os.environ.get("CLAW_GWS_JS")
-    if env:
-        candidates.insert(0, Path(env))
-
+    
     for c in candidates:
         if c.exists():
-            _CACHED_NODE_ARGS = [node, str(c)]
-            return list(_CACHED_NODE_ARGS)
+            if c.suffix == ".exe":
+                _CACHED_NODE_ARGS = [str(c)]
+            elif node:
+                _CACHED_NODE_ARGS = [node, str(c)]
+            if _CACHED_NODE_ARGS:
+                return list(_CACHED_NODE_ARGS)
 
-    # Fallback: use the .cmd via shell=False fails on Windows; prefer .cmd with shell=True.
-    _CACHED_NODE_ARGS = [gws]
+    # Final fallback
+    _CACHED_NODE_ARGS = [gws_shim]
     return list(_CACHED_NODE_ARGS)
 
 

@@ -76,7 +76,7 @@ def create(title, source, parent, shares, notify, tab_id,
     if source:
         from claw.doc.build import _build_and_dispatch  # late import
         _build_and_dispatch(doc_id, source, tab_id or "t.0",
-                            append=False, chunk_size=8, from_index=0,
+                            append=False, chunk_size=4, from_index=0,
                             as_json=as_json, quiet=quiet, verbose=verbose)
 
     url = f"https://docs.google.com/document/d/{doc_id}/edit"
