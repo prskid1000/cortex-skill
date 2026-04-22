@@ -828,50 +828,6 @@ def check_lsp_plugins() -> None:
 # ---------------------------------------------------------------------------
 
 
-
-
-
-
-def check_claude_config() -> None:
-    _print("\n=== 7. CLAUDE CONFIG ===")
-    cfg_path = HOME / ".claude.json"
-    
-    if not cfg_path.exists():
-        if INSTALL_MODE:
-            cfg_path.write_text(json.dumps({}, indent=2), encoding="utf-8")
-        else:
-            warn("claude config", "~/.claude.json not found")
-            return
-
-    try:
-        config = json.loads(cfg_path.read_text(encoding="utf-8"))
-    except Exception as e:
-        warn("claude config", f"failed to parse ~/.claude.json: {e}")
-        return
-
-    script_path = SKILL_DIR / "scripts" / "claude_status.py"
-    # Canonicalize the path for comparison
-    expected_path = str(script_path)
-    expected_cmd = f"python {expected_path}"
-    
-    current_cmd = config.get("statuslineCommand", "")
-    
-    # Flexible check: does it match either with single or double backslashes?
-    is_ok = (current_cmd == expected_cmd or 
-             current_cmd == expected_cmd.replace("\\", "\\\\"))
-
-    if is_ok:
-        check("claude statusline configured", True)
-    elif INSTALL_MODE:
-        config["statuslineCommand"] = expected_cmd
-        cfg_path.write_text(json.dumps(config, indent=2), encoding="utf-8")
-        RESULTS["fixed"].append("claude statusline configured")
-        _print(f"  [FIXED] claude statusline configured -> {script_path.name}")
-    else:
-        check("claude statusline configured", False, 
-              hint=f"rerun with --install to patch ~/.claude.json")
-
-
 def check_claude_md_integration() -> None:
     _print("\n=== 7. ~/.claude/CLAUDE.md BLOCK ===")
     cm = HOME / ".claude" / "CLAUDE.md"
@@ -906,7 +862,7 @@ def main() -> int:
     ap.add_argument("--json", action="store_true",
                     help="Emit a JSON summary on stdout (human log still goes to stderr).")
     ap.add_argument("--skip", action="append", default=[],
-                    choices=["venv", "packages", "cli", "gws", "claw", "mcp", "lsp", "claude-config", "claude-md"],
+                    choices=["venv", "packages", "cli", "gws", "claw", "mcp", "lsp", "claude-md"],
                     help="Skip a check group.")
     args = ap.parse_args()
 
@@ -939,8 +895,6 @@ def main() -> int:
         check_mcp_servers()
     if "lsp" not in args.skip:
         check_lsp_plugins()
-    if "claude-config" not in args.skip:
-        check_claude_config()
     if "claude-md" not in args.skip:
         check_claude_md_integration()
 
