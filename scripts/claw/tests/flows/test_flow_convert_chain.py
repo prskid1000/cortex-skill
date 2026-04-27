@@ -48,14 +48,8 @@ class TestFlowConvertChain:
         assert workspace["docx"].exists()
 
     def test_03_md_to_pdf_nolatex(self, workspace: dict) -> None:
-        # md2pdf-nolatex has a Windows TempDir cleanup issue (separately
-        # tracked); we still exercise its happy path via subprocess where the
-        # process exit naturally releases handles.
-        res = invoke_subprocess("convert", "md2pdf-nolatex",
-                                str(workspace["md"]), str(workspace["pdf_nolatex"]))
-        # Accept exit 0 OR clean failure on the temp-dir teardown bug.
-        if res.exit_code != 0:
-            pytest.skip(f"md2pdf-nolatex tempdir cleanup bug on Windows: {res.output[:200]}")
+        _ok(invoke_subprocess("convert", "md2pdf-nolatex",
+                              str(workspace["md"]), str(workspace["pdf_nolatex"])))
         assert workspace["pdf_nolatex"].exists()
 
     def test_04_book(self, workspace: dict) -> None:

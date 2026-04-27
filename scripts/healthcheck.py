@@ -122,8 +122,15 @@ for _stream in (sys.stdout, sys.stderr):
 
 
 def check(name: str, ok: bool, *, fix_cmd: str | list[str] | None = None,
-          hint: str | None = None) -> bool:
-    """Record a check. If INSTALL_MODE and fix_cmd given, attempt the fix."""
+          hint: str | None = None,
+          verify_cmd: str | list[str] | None = None) -> bool:
+    """Record a check. If INSTALL_MODE and fix_cmd given, attempt the fix.
+
+    When ``verify_cmd`` is supplied, it runs after a fix that exited 0 — if it
+    fails, the fix is treated as broken (e.g. winget reports success but the
+    binary is missing from disk). This catches silent installer failures that
+    would otherwise let the dispatch table report PASS for a phantom tool.
+    """
     if ok:
         RESULTS["pass"].append(name)
         _print(f"  [PASS] {name}")
@@ -149,6 +156,19 @@ def check(name: str, ok: bool, *, fix_cmd: str | list[str] | None = None,
                 or "no available upgrade" in output.lower()
             )
             if r.returncode == 0 or already_installed:
+                # Post-install hook: tools whose installers don't update PATH need a shim.
+                if name == "soffice":
+                    refresh_path_from_registry()
+                    _ensure_soffice_shim()
+
+                # Verify the tool actually works — winget can report success
+                # for an install that left a broken/empty target on disk.
+                if verify_cmd:
+                    v_ok = run_cmd(verify_cmd, timeout=30)[0]
+                    if not v_ok:
+                        _print(f"         [FIX VERIFY FAILED] {name} reported installed but {verify_cmd!r} failed")
+                        return False
+
                 RESULTS["fixed"].append(name)
                 try:
                     RESULTS["fail"].remove(name)
@@ -156,10 +176,6 @@ def check(name: str, ok: bool, *, fix_cmd: str | list[str] | None = None,
                     pass
                 suffix = " (already installed)" if already_installed and r.returncode != 0 else ""
                 _print(f"         [FIXED] {name}{suffix}")
-                # Post-install hook: tools whose installers don't update PATH need a shim.
-                if name == "soffice":
-                    refresh_path_from_registry()
-                    _ensure_soffice_shim()
                 return True
             _print(f"         [FIX FAILED] {r.stderr[:300] or r.stdout[:300]}")
         except subprocess.TimeoutExpired:
@@ -473,16 +489,26 @@ def _ensure_soffice_shim() -> bool:
     LibreOffice's installer doesn't add itself to PATH on Windows, so winget
     leaves `soffice` undiscoverable to `shutil.which()` even after success.
     A shim in ~/.local/bin (already on PATH) bridges that gap.
+
+    Skips writing the shim if the resolved target file does NOT exist on disk
+    — winget can leave a phantom directory entry behind from a failed install,
+    and a dangling shim looks healthier than the failure it's papering over.
+
+    The shim uses CALL with a quoted target path. Some shells (git-bash,
+    PowerShell) re-quote the first token of the bat body when launching it,
+    which would make `"C:\\Path with spaces\\soffice.exe"` look like
+    `'"C:\\Path with spaces\\soffice.exe"'` to cmd. Wrapping with CALL forces
+    cmd to parse it as a command invocation in either case.
     """
     if sys.platform != "win32":
         return False
     target = locate("soffice")
-    if not target:
+    if not target or not Path(target).is_file():
         return False
     bindir = HOME / ".local" / "bin"
     bindir.mkdir(parents=True, exist_ok=True)
     shim = bindir / "soffice.bat"
-    body = f'@echo off\r\n"{target}" %*\r\n'.encode("utf-8")
+    body = f'@echo off\r\ncall "{target}" %*\r\n'.encode("utf-8")
     if shim.exists() and shim.read_bytes() == body:
         return True
     shim.write_bytes(body)
@@ -498,12 +524,25 @@ def check_cli_tools() -> None:
         # for when PATH hasn't been refreshed since a winget install.
         path = locate(name)
         if path and not UPGRADE_MODE:
-            # soffice needs a PATH shim because LibreOffice's installer doesn't
-            # register its program/ directory on PATH.
-            if name == "soffice" and not shutil.which("soffice"):
-                _ensure_soffice_shim()
-            check(name, True)
-            continue
+            # soffice has a known dangling-shim mode: ~/.local/bin/soffice.bat
+            # may point at a target that no longer exists (e.g. user uninstalled
+            # LibreOffice but the shim survived). Probe the file existence and
+            # remove the dead shim so the install path runs.
+            if name == "soffice":
+                shim = HOME / ".local" / "bin" / "soffice.bat"
+                lo = Path(r"C:\Program Files\LibreOffice\program\soffice.exe")
+                if shim.exists() and not lo.exists():
+                    _print("  [WARN] soffice shim dangles — LibreOffice missing; reinstalling")
+                    try:
+                        shim.unlink()
+                    except OSError:
+                        pass
+                    path = None  # fall through to install
+            if path:
+                if name == "soffice" and not shutil.which("soffice"):
+                    _ensure_soffice_shim()
+                check(name, True)
+                continue
         if path and UPGRADE_MODE:
             # Installed — record pass, then fall through to fire the upgrade path.
             RESULTS["pass"].append(name)
@@ -565,6 +604,8 @@ def check_cli_tools() -> None:
                 fix_list += ["--custom", custom_args]
             fix = fix_list  # list — the check() helper handles both forms
             hint = f"winget install --id {winget_id}"
+            check(name, False, fix_cmd=fix, hint=hint, verify_cmd=verify)
+            continue
         elif name == "gws":
             # Real npm package is @googleworkspace/cli (see common/gws_util.py)
             fix = "npm install -g @googleworkspace/cli"

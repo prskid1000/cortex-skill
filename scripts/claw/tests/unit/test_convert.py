@@ -61,9 +61,7 @@ class TestListFormats:
 
 
 class TestMd2pdfNolatex:
-    def test_help(self, runner: CliRunner) -> None:
-        # NOTE: real run currently leaks the output PDF file handle on Windows,
-        # making TemporaryDirectory cleanup explode. Tracked separately.
-        # When fixed, replace with a real round-trip assertion.
-        res = invoke(runner, NOUN, "md2pdf-nolatex", "--help")
-        assert_ok(res)
+    def test_basic(self, runner: CliRunner, tmp_path: Path, sample_md_rich) -> None:
+        out = tmp_path / "n.pdf"
+        invoke(runner, NOUN, "md2pdf-nolatex", str(sample_md_rich()), str(out))
+        assert out.exists()

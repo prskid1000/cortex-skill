@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import io
 import tempfile
 from pathlib import Path
 
@@ -86,9 +87,12 @@ def md2pdf_nolatex(src: Path, dst: Path, css_file: Path | None, page_size: str,
         m = _css_len_to_pts(margin)
         rect = fitz.Rect(m, m, w - m, h - m)
 
+        # Render straight to a BytesIO — writing to a file inside `td` and
+        # reading it back leaks an mmap on Windows that blocks TemporaryDirectory
+        # cleanup. PyMuPDF's DocumentWriter accepts any file-like object.
         story = fitz.Story(html=full_html)
-        pdf_path = Path(td) / "out.pdf"
-        writer = fitz.DocumentWriter(str(pdf_path))
+        buf = io.BytesIO()
+        writer = fitz.DocumentWriter(buf)
         more = 1
         while more:
             dev = writer.begin_page(fitz.Rect(0, 0, w, h))
@@ -96,8 +100,7 @@ def md2pdf_nolatex(src: Path, dst: Path, css_file: Path | None, page_size: str,
             story.draw(dev)
             writer.end_page()
         writer.close()
-
-        data = pdf_path.read_bytes()
+        data = buf.getvalue()
 
     safe_write(dst, lambda f: f.write(data), force=force, backup=backup, mkdir=mkdir)
     if as_json:
