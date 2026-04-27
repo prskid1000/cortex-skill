@@ -1,0 +1,18 @@
+**Before responding to any user request, load the claude-claw skill if its `SKILL.md` is not already in context.** Invoke `Skill(skill: "claude-claw")` once — it stays for the session.
+
+## Skill venv — `~/.claude/skills/claude-claw/.venv/`
+
+- Run `claw` via the PATH shim (`~/.local/bin/claw.bat` on Windows). The shim forwards into the venv.
+- **Never `pip install claw` outside this venv.** Healthcheck auto-removes strays in `pyenv` / system Python — don't reintroduce them.
+- **Don't use the venv for project work.** Project deps go into the project's own env (poetry / uv / pipenv / `requirements.txt`), never into this venv or system Python.
+- New claw dependency? Update `scripts/claw/pyproject.toml` (correct extra + `all`) **and** `PACKAGES` in `scripts/healthcheck.py`.
+- Repair / bootstrap: `python ~/.claude/skills/claude-claw/scripts/healthcheck.py --install`. Wipe with `--recreate-venv`.
+
+## Working with the skill
+
+- Follow links inside `SKILL.md` to load only what you need — some reference files are 60KB+.
+- Match the user's task to a category in the File Map; jump to the linked section.
+
+## Windows shims
+
+`subprocess.run(["tool", ...])` cannot find `.cmd` / `.bat` shims directly. Always resolve with `shutil.which()` first (gws, clickup, npx, pandoc, magick, ffmpeg, ffprobe).

@@ -576,6 +576,144 @@ def check_gws_auth() -> None:
 # 4. claw package itself
 # ---------------------------------------------------------------------------
 
+def _foreign_python_candidates() -> list[Path]:
+    """Return Python interpreters that could host a stray `claw` install.
+
+    Excludes the skill venv. Scans the launcher, PATH-resolved `python` /
+    `python3`, and pyenv version dirs — these are the realistic places a past
+    `pip install` could have leaked `claw` outside its sandbox.
+    """
+    venv_py = venv_python().resolve() if venv_python().exists() else None
+    seen: set[Path] = set()
+    out: list[Path] = []
+
+    def _add(p: Path | None) -> None:
+        if not p:
+            return
+        try:
+            rp = p.resolve()
+        except OSError:
+            return
+        if not rp.exists() or rp.is_dir():
+            return
+        if venv_py and rp == venv_py:
+            return
+        if rp in seen:
+            return
+        seen.add(rp)
+        out.append(rp)
+
+    _add(Path(sys.executable))
+    for name in ("python", "python3", "python.exe"):
+        w = shutil.which(name)
+        if w:
+            _add(Path(w))
+
+    if sys.platform == "win32":
+        pyenv_root = HOME / ".pyenv" / "pyenv-win" / "versions"
+        if pyenv_root.exists():
+            for ver_dir in pyenv_root.iterdir():
+                _add(ver_dir / "python.exe")
+    else:
+        pyenv_root = HOME / ".pyenv" / "versions"
+        if pyenv_root.exists():
+            for ver_dir in pyenv_root.iterdir():
+                _add(ver_dir / "bin" / "python")
+
+    return out
+
+
+def _claw_install_location(py: Path) -> str | None:
+    """site-packages directory where `claw` is installed for this interpreter, else None.
+
+    Used as a dedup key — pyenv-win exposes the same Python via a `.bat` shim,
+    a `python3.bat` shim, and the direct `python.exe`, all of which point at
+    one site-packages. We don't want to "uninstall" the same install three times.
+    """
+    try:
+        r = subprocess.run([str(py), "-m", "pip", "show", "claw"],
+                           capture_output=True, text=True, timeout=15)
+        if r.returncode != 0:
+            return None
+        for line in r.stdout.splitlines():
+            if line.startswith("Location:"):
+                return line.split(":", 1)[1].strip().lower()
+        return None
+    except Exception:
+        return None
+
+
+def check_claw_contamination() -> None:
+    """Detect (and in --install mode, uninstall) stray `claw` installs.
+
+    CLAUDE.md scopes claw to the skill venv only. Strays in pyenv / system
+    Python typically lack the runtime extras (people pip-install the package
+    without `[all]`), producing `ModuleNotFoundError: No module named 'click'`
+    when PATH resolves to that interpreter's shim. Even when the deps are
+    present, PATH ordering can mask the official `~/.local/bin/claw.bat`, so
+    the foreign install has to go.
+    """
+    seen: dict[str, Path] = {}  # install location -> first interpreter found
+    for py in _foreign_python_candidates():
+        loc = _claw_install_location(py)
+        if loc and loc not in seen:
+            seen[loc] = py
+    if not seen:
+        return
+    for loc, py in seen.items():
+        label = f"foreign claw at {loc}"
+        if INSTALL_MODE:
+            try:
+                r = subprocess.run([str(py), "-m", "pip", "uninstall", "-y", "claw"],
+                                   capture_output=True, text=True, timeout=120)
+                ok = r.returncode == 0
+            except Exception:
+                ok = False
+            if ok:
+                RESULTS["fixed"].append(label)
+                _print(f"  [FIXED] uninstalled stray claw from {py}")
+                continue
+        RESULTS["fail"].append(label)
+        _print(f"  [FAIL] {label}")
+        _print(f"         hint: \"{py}\" -m pip uninstall -y claw")
+
+
+def _verify_claw_resolution() -> None:
+    """Confirm `claw` on PATH resolves to the venv shim, not something else.
+
+    An earlier PATH entry can shadow `~/.local/bin/claw.bat` even after the
+    shim is written. Surface that as a warning so the user knows to reorder
+    PATH instead of silently using a stale binary.
+    """
+    bindir = HOME / ".local" / "bin"
+    expected = bindir / ("claw.bat" if sys.platform == "win32" else "claw")
+    if not expected.exists():
+        return
+    if sys.platform == "win32":
+        try:
+            r = subprocess.run(["where.exe", "claw"], capture_output=True,
+                               text=True, timeout=10)
+            lines = [ln for ln in (r.stdout or "").splitlines() if ln.strip()]
+            actual = Path(lines[0]).resolve() if lines else None
+        except Exception:
+            return
+    else:
+        p = shutil.which("claw")
+        actual = Path(p).resolve() if p else None
+
+    if actual is None:
+        warn("claw on PATH",
+             f"shim exists at {expected} but PATH lookup found nothing — "
+             f"prepend {bindir} to PATH")
+        return
+    if actual != expected.resolve():
+        warn("claw on PATH",
+             f"resolves to {actual}, not {expected} — "
+             f"move {bindir} earlier on PATH to fix")
+        return
+    check(f"claw on PATH -> {expected.name}", True)
+
+
 def _ensure_claw_shim() -> None:
     """Write ~/.local/bin/claw.bat (Windows) or claw symlink (POSIX) pointing at venv entry point.
 
@@ -617,6 +755,8 @@ def check_claw_package() -> None:
         warn("claw", "venv missing — skipping")
         return
 
+    check_claw_contamination()
+
     probe = subprocess.run(
         [str(vpy), "-c",
          "import claw; print(getattr(claw,'__version__','?'))"],
@@ -631,6 +771,7 @@ def check_claw_package() -> None:
               hint=f"pip install -e {CLAW_PKG}[all] into {VENV_DIR}")
 
     _ensure_claw_shim()
+    _verify_claw_resolution()
 
 
 # ---------------------------------------------------------------------------
@@ -832,18 +973,36 @@ def check_claude_md_integration() -> None:
     _print("\n=== 7. ~/.claude/CLAUDE.md BLOCK ===")
     cm = HOME / ".claude" / "CLAUDE.md"
     patcher = CLAW_PKG.parent / "patchers" / "md-section-patcher.py"
-    block = SKILL_DIR / "references" / "patchers" / "claude-md-block.md"
+    block = SKILL_DIR / "references" / "patchers" / "CLAUDE.patch"
     if not cm.exists():
         warn("~/.claude/CLAUDE.md", "not found — create it and run the patcher")
         return
+    if not block.exists():
+        warn("CLAUDE.patch", f"source missing at {block}")
+        return
+
+    desired_body = block.read_text(encoding="utf-8").strip()
     text = cm.read_text(encoding="utf-8")
-    has_block = "<!-- claude-claw:begin -->" in text and "<!-- claude-claw:end -->" in text
-    if has_block:
-        check("claude-claw block present", True)
-    else:
-        fix = f"{sys.executable} {patcher} apply --target {cm} --section claude-claw --source {block}"
-        check("claude-claw block present", False, fix_cmd=fix,
-              hint="inject the canonical block via md-section-patcher.py")
+    begin_marker = "<!-- claude-claw:begin -->"
+    end_marker = "<!-- claude-claw:end -->"
+
+    drift = False
+    if begin_marker in text and end_marker in text:
+        b = text.index(begin_marker) + len(begin_marker)
+        e = text.index(end_marker)
+        current_body = text[b:e].strip()
+        if current_body == desired_body:
+            check("claude-claw block in sync", True)
+            return
+        drift = True
+
+    fix = [sys.executable, str(patcher), "apply",
+           "--target", str(cm), "--section", "claude-claw",
+           "--source", str(block)]
+    label = "claude-claw block drift" if drift else "claude-claw block present"
+    hint = "block content differs from CLAUDE.patch — re-apply" if drift \
+           else "inject the canonical block via md-section-patcher.py"
+    check(label, False, fix_cmd=fix, hint=hint)
 
 
 # ---------------------------------------------------------------------------
