@@ -156,6 +156,10 @@ def check(name: str, ok: bool, *, fix_cmd: str | list[str] | None = None,
                     pass
                 suffix = " (already installed)" if already_installed and r.returncode != 0 else ""
                 _print(f"         [FIXED] {name}{suffix}")
+                # Post-install hook: tools whose installers don't update PATH need a shim.
+                if name == "soffice":
+                    refresh_path_from_registry()
+                    _ensure_soffice_shim()
                 return True
             _print(f"         [FIX FAILED] {r.stderr[:300] or r.stdout[:300]}")
         except subprocess.TimeoutExpired:
@@ -238,6 +242,8 @@ WINGET_FALLBACKS = {
     "pandoc":    [r"C:\Program Files\Pandoc\pandoc.exe"],
     "ffmpeg":    [r"C:\Program Files\Gyan.FFmpeg*\ffmpeg-*\bin\ffmpeg.exe"],
     "magick":    [r"C:\Program Files\ImageMagick-*\magick.exe"],
+    "soffice":   [r"C:\Program Files\LibreOffice\program\soffice.exe",
+                  r"C:\Program Files (x86)\LibreOffice\program\soffice.exe"],
 }
 
 
@@ -365,6 +371,7 @@ CLI_TOOLS: list[tuple[str, str, str | None, str | None]] = [
     ("ffprobe",   "ffprobe -version",  None,                      None),  # ships with ffmpeg
     ("pandoc",    "pandoc --version",  "JohnMacFarlane.Pandoc",   None),
     ("magick",    "magick --version",  "ImageMagick.ImageMagick", None),
+    ("soffice",   "soffice --version", "TheDocumentFoundation.LibreOffice", None),
     ("qpdf",      "qpdf --version",    "qpdf.qpdf",               None),
     # UB-Mannheim uses Inno Setup — /VERYSILENT bypasses the installer wizard.
     ("tesseract", "tesseract --version", "UB-Mannheim.TesseractOCR",
@@ -460,6 +467,29 @@ def _download_clickup() -> None:
         (dst / "clickup.exe").write_bytes(payload)
 
 
+def _ensure_soffice_shim() -> bool:
+    """Write ~/.local/bin/soffice.bat pointing at the LibreOffice install.
+
+    LibreOffice's installer doesn't add itself to PATH on Windows, so winget
+    leaves `soffice` undiscoverable to `shutil.which()` even after success.
+    A shim in ~/.local/bin (already on PATH) bridges that gap.
+    """
+    if sys.platform != "win32":
+        return False
+    target = locate("soffice")
+    if not target:
+        return False
+    bindir = HOME / ".local" / "bin"
+    bindir.mkdir(parents=True, exist_ok=True)
+    shim = bindir / "soffice.bat"
+    body = f'@echo off\r\n"{target}" %*\r\n'.encode("utf-8")
+    if shim.exists() and shim.read_bytes() == body:
+        return True
+    shim.write_bytes(body)
+    _print(f"         [SHIM] wrote {shim} -> {target}")
+    return True
+
+
 def check_cli_tools() -> None:
     _print("\n=== 2. CLI TOOLS ===")
     have_winget = shutil.which("winget") is not None
@@ -468,6 +498,10 @@ def check_cli_tools() -> None:
         # for when PATH hasn't been refreshed since a winget install.
         path = locate(name)
         if path and not UPGRADE_MODE:
+            # soffice needs a PATH shim because LibreOffice's installer doesn't
+            # register its program/ directory on PATH.
+            if name == "soffice" and not shutil.which("soffice"):
+                _ensure_soffice_shim()
             check(name, True)
             continue
         if path and UPGRADE_MODE:
