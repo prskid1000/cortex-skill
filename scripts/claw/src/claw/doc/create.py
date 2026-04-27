@@ -48,7 +48,7 @@ def create(title, source, parent, shares, notify, tab_id,
 
     if shares:
         from click.testing import CliRunner
-        from claw.sheet.share import share as share_cmd
+        from claw.drive.share import share as share_cmd
         runner = CliRunner()
         for spec in shares:
             parsed = _parse_share(spec)

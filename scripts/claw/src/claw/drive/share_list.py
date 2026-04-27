@@ -1,4 +1,4 @@
-"""claw sheet share-list — drive.permissions.list."""
+"""claw drive share-list — drive.permissions.list."""
 
 from __future__ import annotations
 

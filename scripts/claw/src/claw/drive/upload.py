@@ -1,4 +1,4 @@
-"""claw sheet upload — upload to Drive, optionally convert to Google-native."""
+"""claw drive upload — upload to Drive, optionally convert to Google-native."""
 
 from __future__ import annotations
 

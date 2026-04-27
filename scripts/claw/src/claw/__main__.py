@@ -26,7 +26,7 @@ NOUNS = {
     "convert":  ("claw.convert", "group"),
     "email":    ("claw.email", "group"),
     "doc":      ("claw.doc", "group"),
-    "sheet":    ("claw.sheet", "group"),
+    "drive":    ("claw.drive", "group"),
     "web":      ("claw.web", "group"),
     "html":     ("claw.html", "group"),
     "xml":      ("claw.xml", "group"),

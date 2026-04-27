@@ -8,7 +8,7 @@ A Claude Code skill that turns Claude into a productivity OS — a single librar
 
 | Folder | Contents | Total |
 |--------|----------|-------|
-| [`references/claw/`](references/claw/) | `claw` CLI per-noun reference — primary entry point | 17 noun docs ([xlsx](references/claw/xlsx.md), [docx](references/claw/docx.md), [pptx](references/claw/pptx.md), [pdf](references/claw/pdf.md), [img](references/claw/img.md), [media](references/claw/media.md), [convert](references/claw/convert.md), [email](references/claw/email.md), [doc](references/claw/doc.md), [sheet](references/claw/sheet.md), [web](references/claw/web.md), [html](references/claw/html.md), [xml](references/claw/xml.md), [browser](references/claw/browser.md), [pipeline](references/claw/pipeline.md), [doctor](references/claw/doctor.md), [completion](references/claw/completion.md)) + [README](references/claw/README.md) |
+| [`references/claw/`](references/claw/) | `claw` CLI per-noun reference — primary entry point | 17 noun docs ([xlsx](references/claw/xlsx.md), [docx](references/claw/docx.md), [pptx](references/claw/pptx.md), [pdf](references/claw/pdf.md), [img](references/claw/img.md), [media](references/claw/media.md), [convert](references/claw/convert.md), [email](references/claw/email.md), [doc](references/claw/doc.md), [drive](references/claw/drive.md), [web](references/claw/web.md), [html](references/claw/html.md), [xml](references/claw/xml.md), [browser](references/claw/browser.md), [pipeline](references/claw/pipeline.md), [doctor](references/claw/doctor.md), [completion](references/claw/completion.md)) + [README](references/claw/README.md) |
 | [`references/`](references/) (library-level) | Escape-hatch API docs — use when `claw` isn't enough | 3 tool refs (`gws-cli`, `clickup-cli`, `claude-customization`) + 5 patcher refs |
 | [`examples/`](examples/) | Copy-paste runnable workflows | 3 files: [`claw-recipes.md`](examples/claw-recipes.md) (one-liners), [`claw-pipelines.md`](examples/claw-pipelines.md) (YAML recipes), [`clickup-workflows.md`](examples/clickup-workflows.md) |
 | [`scripts/`](scripts/) | Healthcheck + launch wrappers + patchers for third-party apps (plus the [`claw`](scripts/claw/) CLI package itself) | [healthcheck](scripts/healthcheck.py), 4 wrappers, 4 patchers |
@@ -61,7 +61,7 @@ claude-claw/
 │   │   ├── README.md                    # install, global flags, help UX, exit codes
 │   │   ├── xlsx.md | docx.md | pptx.md | pdf.md
 │   │   ├── img.md | media.md | convert.md
-│   │   ├── email.md | doc.md | sheet.md
+│   │   ├── email.md | doc.md | drive.md
 │   │   ├── web.md | html.md | xml.md | browser.md
 │   │   ├── pipeline.md | doctor.md | completion.md
 │   ├── gws-cli.md                   # Google Workspace CLI (escape hatch)

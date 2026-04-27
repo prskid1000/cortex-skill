@@ -82,7 +82,7 @@ Nouns live under the single `claw` binary. Each has its own reference file in th
 | `convert` | Format-to-format via Pandoc + fallbacks | [claw/convert.md](convert.md) |
 | `email` | Compose + send MIME; Gmail via `gws` or OAuth2 | [claw/email.md](email.md) |
 | `doc` | Google Docs — create, insert, export (wraps `gws docs`) | [claw/doc.md](doc.md) |
-| `sheet` | Google Sheets — read / write / append (wraps `gws sheets`) | [claw/sheet.md](sheet.md) |
+| `drive` | Google Drive — upload/download, list, move, copy, rename, delete, share (wraps `gws drive`) | [claw/drive.md](drive.md) |
 | `web` | HTTP fetch with retry, content-type sniff, cookie jars | [claw/web.md](web.md) |
 | `html` | HTML parse / query / scrape via lxml + BS4 | [claw/html.md](html.md) |
 | `xml` | XML parse / XPath / XSLT / validate via lxml | [claw/xml.md](xml.md) |
@@ -252,7 +252,7 @@ Cache entries never contain secrets; interpolation results that resolve `${env:.
 | `media` | [ffmpeg / ffprobe](media.md#when-claw-media-isnt-enough) |
 | `convert` | [pandoc](convert.md#when-claw-convert-isnt-enough) |
 | `email` | [Python `email.mime` + gws gmail](email.md#when-claw-email-isnt-enough) |
-| `doc` / `sheet` | [references/gws-cli.md](../gws-cli.md) (all `gws` verbs + params) |
+| `doc` / `drive` | [references/gws-cli.md](../gws-cli.md) (all `gws` verbs + params) |
 | `html` | [BeautifulSoup4 / lxml.html / trafilatura](html.md#when-claw-html-isnt-enough) |
 | `xml` | [lxml](xml.md#when-claw-xml-isnt-enough) |
 | `web` | [requests / httpx / trafilatura](web.md#when-claw-web-isnt-enough) |

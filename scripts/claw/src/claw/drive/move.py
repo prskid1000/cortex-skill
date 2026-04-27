@@ -1,4 +1,4 @@
-"""claw sheet move — drive.files.update with addParents / removeParents."""
+"""claw drive move — drive.files.update with addParents / removeParents."""
 
 from __future__ import annotations
 

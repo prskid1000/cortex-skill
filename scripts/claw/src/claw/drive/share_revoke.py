@@ -1,4 +1,4 @@
-"""claw sheet share-revoke — drive.permissions.delete."""
+"""claw drive share-revoke — drive.permissions.delete."""
 
 from __future__ import annotations
 

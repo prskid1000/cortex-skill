@@ -1,4 +1,4 @@
-"""claw sheet rename — drive.files.update with a new name."""
+"""claw drive rename — drive.files.update with a new name."""
 
 from __future__ import annotations
 

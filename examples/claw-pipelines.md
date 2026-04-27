@@ -33,7 +33,7 @@
 
 ## DB to Styled XLSX + PDF to Drive to Gmail
 
-> Step types: `shell` · [xlsx.from-json](../scripts/claw/src/claw/xlsx/from_json.py) · `xlsx.to-pdf` (**NOT IMPLEMENTED**) · [sheet.upload](../scripts/claw/src/claw/sheet/upload.py) · `doc.upload` (**NOT IMPLEMENTED**) · [email.send](../scripts/claw/src/claw/email/send.py)
+> Step types: `shell` · [xlsx.from-json](../scripts/claw/src/claw/xlsx/from_json.py) · `xlsx.to-pdf` (**NOT IMPLEMENTED**) · [drive.upload](../scripts/claw/src/claw/drive/upload.py) · `doc.upload` (**NOT IMPLEMENTED**) · [email.send](../scripts/claw/src/claw/email/send.py)
 
 The marquee recipe. Queries a database, builds a styled Excel workbook with a chart, renders a PDF summary, uploads both to Google Drive, and emails them as attachments. Replaces the ~200-line Python orchestration in the original [data-pipelines.md](../references/claw/pipeline.md) full-pipeline example with declarative YAML.
 
@@ -151,7 +151,7 @@ claw pipeline run recipe.yaml --var quarter=Q4
 
 ## CSV to Styled XLSX to Google Sheet
 
-> Step types: [xlsx.from-csv](../scripts/claw/src/claw/xlsx/from_csv.py) · `xlsx.style` (**NOT IMPLEMENTED**) · [sheet.upload](../scripts/claw/src/claw/sheet/upload.py)
+> Step types: [xlsx.from-csv](../scripts/claw/src/claw/xlsx/from_csv.py) · `xlsx.style` (**NOT IMPLEMENTED**) · [drive.upload](../scripts/claw/src/claw/drive/upload.py)
 
 Turns a local CSV into a branded XLSX and uploads it as a native Google Sheet shared with a public read-only link. Replaces [data-pipelines.md § CSV → Styled Excel → Google Sheets](../references/claw/pipeline.md).
 
@@ -206,7 +206,7 @@ steps:
 
 ## Scheduled DB Snapshot to Google Sheet
 
-> Step types: `shell` · [sheet.upload](../scripts/claw/src/claw/sheet/upload.py)
+> Step types: `shell` · [drive.upload](../scripts/claw/src/claw/drive/upload.py)
 
 Daily DB snapshot that overwrites a fixed Google Sheet in place (useful for dashboard data sources). Designed to be triggered by cron / scheduled task.
 
@@ -368,7 +368,7 @@ steps:
 
 ## JSON API to Flattened XLSX to Drive
 
-> Step types: [web.fetch](../scripts/claw/src/claw/web/fetch.py) · [xlsx.from-json](../scripts/claw/src/claw/xlsx/from_json.py) · [sheet.upload](../scripts/claw/src/claw/sheet/upload.py)
+> Step types: [web.fetch](../scripts/claw/src/claw/web/fetch.py) · [xlsx.from-json](../scripts/claw/src/claw/xlsx/from_json.py) · [drive.upload](../scripts/claw/src/claw/drive/upload.py)
 
 Hits a JSON endpoint, flattens nested records into a wide-table XLSX, and uploads to a designated Drive folder. `web.fetch` caches the response so retries don't hammer the API.
 
@@ -421,7 +421,7 @@ steps:
 
 ## Google Sheet Download, Enrich, Upload Back
 
-> Step types: [sheet.download](../scripts/claw/src/claw/sheet/download.py) · `xlsx.sql` (**NOT IMPLEMENTED**) · [xlsx.conditional](../scripts/claw/src/claw/xlsx/conditional.py) · [sheet.upload](../scripts/claw/src/claw/sheet/upload.py)
+> Step types: [drive.download](../scripts/claw/src/claw/drive/download.py) · `xlsx.sql` (**NOT IMPLEMENTED**) · [xlsx.conditional](../scripts/claw/src/claw/xlsx/conditional.py) · [drive.upload](../scripts/claw/src/claw/drive/upload.py)
 
 Downloads an existing Google Sheet, adds a computed "Status" column based on a revenue threshold, and uploads the modified content back to the same file id. Replaces [data-pipelines.md § Google Sheet → download → modify → upload back](../references/claw/pipeline.md).
 
@@ -647,7 +647,7 @@ steps:
 
 ## Photo Batch: Strip EXIF + Resize + Watermark + Upload
 
-> Step types: [img.batch](../scripts/claw/src/claw/img/batch.py) · `shell` · [sheet.upload](../scripts/claw/src/claw/sheet/upload.py)
+> Step types: [img.batch](../scripts/claw/src/claw/img/batch.py) · `shell` · [drive.upload](../scripts/claw/src/claw/drive/upload.py)
 
 A classic photographer pipeline: auto-rotate, strip identifying EXIF, resize to web-friendly dimensions, watermark, and upload the result to a shared Drive folder.
 
@@ -692,7 +692,7 @@ steps:
         - -c
         - |
           for f in ${vars.webdir}/*.jpg; do
-            claw sheet upload --name "$(basename "$f")" --from "$f" --parent "${vars.parent}"
+            claw drive upload --name "$(basename "$f")" --from "$f" --parent "${vars.parent}"
           done
 ```
 

@@ -93,11 +93,23 @@ python ~/.claude/skills/claude-claw/scripts/healthcheck.py --install     # creat
 - [thumbnail](references/claw/media.md#extract) — Frame/Contact sheet grab
 - [trim/compress](references/claw/media.md#transform) — Cut/Shrink video
 
+### ☁️ Google Drive — [Full Ref](references/claw/drive.md)
+- [upload](references/claw/drive.md#11-upload) — Upload local file (auto-converts office formats)
+- [download](references/claw/drive.md#21-download) — Fetch Drive file (binary blobs as-is; Google-native via `--as pdf|xlsx|docx|md|...`)
+- [info](references/claw/drive.md#23-info) — File metadata (name/mime/size/parents/owners)
+- [copy](references/claw/drive.md#12-copy) — Duplicate a Drive file
+- [list](references/claw/drive.md#22-list) — Query Drive files
+- [move](references/claw/drive.md#31-move) — Move file between folders
+- [rename](references/claw/drive.md#32-rename) — Rename Drive file
+- [delete](references/claw/drive.md#33-delete) — Permanently delete (no Trash)
+- [share](references/claw/drive.md#41-share) — Grant access (user/domain/anyone)
+- [share-list](references/claw/drive.md#42-share-list) — List permissions
+- [share-revoke](references/claw/drive.md#43-share-revoke) — Remove user access
+
 ### 🚀 Automation
 - [browser launch](references/claw/browser.md#launch) — CDP-enabled Chrome/Edge
 - [pipeline run](references/claw/pipeline.md#run) — Execute YAML DAG
 - [doc create](references/claw/doc.md#create) — New Google Doc
-- [sheet upload](references/claw/sheet.md#upload) — XLSX to Google Sheet
 - [email send](references/claw/email.md#send) — Compose & send (Gmail)
 
 ---

@@ -1,4 +1,4 @@
-"""claw sheet delete — trash (recoverable) or permanently delete a Drive file."""
+"""claw drive delete — trash (recoverable) or permanently delete a Drive file."""
 
 from __future__ import annotations
 

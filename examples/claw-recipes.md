@@ -569,7 +569,7 @@ claw email download-attachment <MSG_ID> <ATT_ID> --out /tmp/invoice.pdf
 
 ### Send via Drive and Sheets
 
-> Uses: [sheet upload](../scripts/claw/src/claw/sheet/upload.py) · [sheet download](../scripts/claw/src/claw/sheet/download.py) · [sheet share](../scripts/claw/src/claw/sheet/share.py) · [sheet list](../scripts/claw/src/claw/sheet/list_.py) · `doc share` (**NOT IMPLEMENTED**)
+> Uses: [drive upload](../scripts/claw/src/claw/drive/upload.py) · [drive download](../scripts/claw/src/claw/drive/download.py) · [drive share](../scripts/claw/src/claw/drive/share.py) · [drive list](../scripts/claw/src/claw/drive/list_.py) · `doc share` (**NOT IMPLEMENTED**)
 
 ```bash
 # Share an existing Doc publicly (reader)
@@ -579,15 +579,15 @@ claw doc share <DOC_ID> --anyone --role reader
 claw doc share <DOC_ID> --user alice@x.com --role writer --notify --message "Please review by Friday."
 
 # Upload a CSV as a new Google Sheet (auto-convert)
-claw sheet upload --name "DB Export" --from /tmp/rows.csv --convert
+claw drive upload --name "DB Export" --from /tmp/rows.csv
 
 # Round-trip: export Sheet → xlsx → local edits → upload over the original
-claw sheet download <SHEET_ID> --out /tmp/w.xlsx
+claw drive download <SHEET_ID> --out /tmp/w.xlsx --as xlsx
 # …edit /tmp/w.xlsx with claw xlsx style / append / chart …
-claw sheet upload --replace <SHEET_ID> --from /tmp/w.xlsx
+claw drive upload --replace <SHEET_ID> --from /tmp/w.xlsx
 
 # List your Sheets in a folder
-claw sheet list --parent <FOLDER_ID> --json
+claw drive list --parent <FOLDER_ID> --json
 ```
 
 ---
@@ -692,7 +692,7 @@ claw cache clear --older-than 7d
 | Alpha-safe PNG→JPEG | `claw img to-jpeg in.png --bg white --out out.jpg` |
 | Send mail + attach | `claw email send --to a@x --subject S --body B --attach @f.pdf` |
 | Reply in-thread | `claw email reply <MSG_ID> --body "thanks"` |
-| Upload to Drive | `claw sheet upload --name "X" --from data.csv --convert` |
+| Upload to Drive | `claw drive upload --name "X" --from data.csv` |
 | Video trim | `claw media trim in.mp4 --from 00:01:00 --to 00:02:00 --out snip.mp4` |
 | Run pipeline | `claw pipeline run recipe.yaml` |
 | Doctor | `claw doctor` |

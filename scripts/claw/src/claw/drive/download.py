@@ -1,4 +1,4 @@
-"""claw sheet download — export Google-native or binary files."""
+"""claw drive download — export Google-native or binary files."""
 
 from __future__ import annotations
 

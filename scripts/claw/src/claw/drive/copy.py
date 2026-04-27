@@ -1,4 +1,4 @@
-"""claw sheet copy — drive.files.copy."""
+"""claw drive copy — drive.files.copy."""
 
 from __future__ import annotations
 

@@ -1,4 +1,4 @@
-"""claw sheet list — drive.files.list with sugar."""
+"""claw drive list — drive.files.list with sugar."""
 
 from __future__ import annotations
 
